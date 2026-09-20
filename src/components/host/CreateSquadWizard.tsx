@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { LatLng, Route, VehicleMode } from '../../types/navigation';
 import { Place } from '../../types/places';
 import { PlaceSearchBox } from '../places/PlaceSearchBox';
-import { osrmRoutingProvider } from '../../services/routing/osrmRoutingProvider';
+import { routingProvider } from '../../services/routing';
 import { formatDistance, formatDuration } from '../../utils/format';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -80,7 +80,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
     const origin: LatLng = userLocation || { lat: 17.385, lng: 78.4867 }; // Default origin if GPS not yet granted
     try {
-      const calculatedRoutes = await osrmRoutingProvider.calculateRoutes(
+      const calculatedRoutes = await routingProvider.calculateRoutes(
         origin,
         selectedPlace.coordinates,
         mode

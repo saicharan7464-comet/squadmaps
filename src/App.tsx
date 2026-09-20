@@ -14,7 +14,7 @@ import { HostSettingsModal } from './components/host/HostSettingsModal';
 import { CreateSquadWizard } from './components/host/CreateSquadWizard';
 import { HomePage } from './pages/HomePage';
 import { JoinSquadPage } from './pages/JoinSquadPage';
-import { osrmRoutingProvider } from './services/routing/osrmRoutingProvider';
+import { routingProvider } from './services/routing';
 import { Place } from './types/places';
 import { Route, LatLng } from './types/navigation';
 import { SquadMember } from './types/squad';
@@ -100,7 +100,7 @@ const NavigationCockpit: React.FC<{
     onRerouteNeeded: async () => {
       if (!location.coordinates || !activeRoute) return;
       const endPoint = activeRoute.polyline[activeRoute.polyline.length - 1];
-      const recalculated = await osrmRoutingProvider.calculateRoutes(
+      const recalculated = await routingProvider.calculateRoutes(
         location.coordinates,
         endPoint,
         squad?.vehicleMode || 'car'
@@ -146,7 +146,7 @@ const NavigationCockpit: React.FC<{
   const handleSelectPlace = async (place: Place) => {
     setSelectedDestination(place);
     const origin: LatLng = location.coordinates || { lat: 17.385, lng: 78.4867 };
-    const calculatedRoutes = await osrmRoutingProvider.calculateRoutes(
+    const calculatedRoutes = await routingProvider.calculateRoutes(
       origin,
       place.coordinates,
       squad?.vehicleMode || 'car'

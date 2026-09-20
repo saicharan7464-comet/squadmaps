@@ -46,8 +46,28 @@ export const MapView: React.FC<MapViewProps> = ({
   const regroupMarkerRef = useRef<L.Marker | null>(null);
   const placeMarkersRef = useRef<L.Marker[]>([]);
 
-  const [mapLayer, setMapLayer] = useState<'dark' | 'streets'>('dark');
+  const [mapLayer, setMapLayer] = useState<'dark' | 'streets' | 'satellite'>('dark');
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+
+  const getTileConfig = (layer: 'dark' | 'streets' | 'satellite') => {
+    if (layer === 'satellite') {
+      return {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        options: {
+          maxZoom: 19,
+          className: ''
+        }
+      };
+    }
+    return {
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      options: {
+        maxZoom: 19,
+        subdomains: 'abc',
+        className: layer === 'dark' ? 'dark-tile-layer' : ''
+      }
+    };
+  };
 
   // Initialize Map
   useEffect(() => {
@@ -65,16 +85,8 @@ export const MapView: React.FC<MapViewProps> = ({
       attributionControl: false
     });
 
-    // Dark tiles via CartoDB Dark Matter
-    const tileUrl =
-      mapLayer === 'dark'
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-    const tiles = L.tileLayer(tileUrl, {
-      maxZoom: 19,
-      subdomains: 'abcd'
-    }).addTo(map);
+    const { url, options } = getTileConfig(mapLayer);
+    const tiles = L.tileLayer(url, options).addTo(map);
 
     tileLayerRef.current = tiles;
     mapInstanceRef.current = map;
@@ -96,15 +108,8 @@ export const MapView: React.FC<MapViewProps> = ({
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     mapInstanceRef.current.removeLayer(tileLayerRef.current);
 
-    const tileUrl =
-      mapLayer === 'dark'
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-    const tiles = L.tileLayer(tileUrl, {
-      maxZoom: 19,
-      subdomains: 'abcd'
-    }).addTo(mapInstanceRef.current);
+    const { url, options } = getTileConfig(mapLayer);
+    const tiles = L.tileLayer(url, options).addTo(mapInstanceRef.current);
 
     tileLayerRef.current = tiles;
   }, [mapLayer]);
@@ -418,7 +423,11 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   const toggleLayer = () => {
-    setMapLayer((prev) => (prev === 'dark' ? 'streets' : 'dark'));
+    setMapLayer((prev) => {
+      if (prev === 'dark') return 'streets';
+      if (prev === 'streets') return 'satellite';
+      return 'dark';
+    });
   };
 
   return (

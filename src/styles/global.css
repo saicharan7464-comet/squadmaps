@@ -199,8 +199,10 @@ button:disabled {
   font-family: var(--font-sans) !important;
 }
 
-.leaflet-tile {
-  filter: brightness(0.7) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+/* Leaflet Dark Mode Tiles (Watermark-Free) */
+.dark-tile-layer .leaflet-tile,
+.dark-tile-layer img {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
 }
 
 .leaflet-control-zoom {
