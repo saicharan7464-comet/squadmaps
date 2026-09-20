@@ -49,22 +49,27 @@ export const MapView: React.FC<MapViewProps> = ({
   const [mapLayer, setMapLayer] = useState<'dark' | 'streets' | 'satellite'>('dark');
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
+  const mapProvider = (import.meta.env.VITE_MAP_PROVIDER as string) || 'openstreetmap';
+
   const getTileConfig = (layer: 'dark' | 'streets' | 'satellite') => {
     if (layer === 'satellite') {
       return {
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         options: {
           maxZoom: 19,
-          className: ''
+          className: '',
+          attribution: 'Esri World Imagery'
         }
       };
     }
+    // OpenStreetMap tiles (standard or dark-styled via CSS)
     return {
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
       options: {
         maxZoom: 19,
         subdomains: 'abc',
-        className: layer === 'dark' ? 'dark-tile-layer' : ''
+        className: layer === 'dark' ? 'dark-tile-layer' : '',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }
     };
   };

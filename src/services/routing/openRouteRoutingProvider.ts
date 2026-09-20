@@ -70,7 +70,7 @@ export class OpenRouteRoutingProvider implements IRouteProvider {
     }
 
     const profile = this.getProfile(mode);
-    const url = `https://api.openrouteservice.org/v2/directions/${profile}/geojson`;
+    const url = `https://api.heigit.org/openrouteservice/v2/directions/${profile}/geojson`;
 
     try {
       const response = await fetch(url, {

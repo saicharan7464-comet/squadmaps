@@ -66,27 +66,41 @@ export function useLocationTracker(initialCoords?: LatLng) {
       let calculatedHeading = state.heading;
       let isStationary = true;
 
-      if (prevCoordsRef.current) {
-        const distMoved = haversineDistance(prevCoordsRef.current, currentCoords);
-        const timeDiffSec = (currentTime - prevTimeRef.current) / 1000;
-
-        // If moved more than 3 meters, consider moving
-        if (distMoved >= 3 && timeDiffSec > 0) {
+      // Geolocation speed is in meters/second, convert to km/h (1 m/s = 3.6 km/h)
+      // Check device reported speed first
+      if (rawSpeed !== null && rawSpeed !== undefined && !isNaN(rawSpeed)) {
+        if (rawSpeed >= 0.5) {
+          // Device is moving
+          speedKmh = rawSpeed * 3.6;
           isStationary = false;
-          // Calculate heading from movement vector
-          calculatedHeading = calculateBearing(prevCoordsRef.current, currentCoords);
-
-          // Use device speed if available, otherwise compute from delta
-          if (rawSpeed !== null && rawSpeed !== undefined && !isNaN(rawSpeed) && rawSpeed >= 0) {
-            speedKmh = rawSpeed * 3.6;
-          } else {
-            speedKmh = (distMoved / timeDiffSec) * 3.6;
-          }
         } else {
-          // Stationary: Keep speed strictly at 0 km/h (prevent GPS jitter drift)
+          // Device is stationary
           speedKmh = 0;
           isStationary = true;
         }
+      } else if (prevCoordsRef.current) {
+        // Fallback: calculate speed from coordinate delta if rawSpeed is unavailable
+        const distMoved = haversineDistance(prevCoordsRef.current, currentCoords);
+        const timeDiffSec = (currentTime - prevTimeRef.current) / 1000;
+
+        // If moved more than 3 meters and within reasonable time, calculate speed
+        if (distMoved >= 3 && timeDiffSec > 0) {
+          const calculatedSpeed = (distMoved / timeDiffSec) * 3.6;
+          if (calculatedSpeed >= 1.8) {
+            speedKmh = calculatedSpeed;
+            isStationary = false;
+          } else {
+            speedKmh = 0;
+            isStationary = true;
+          }
+        } else {
+          speedKmh = 0;
+          isStationary = true;
+        }
+      }
+
+      if (prevCoordsRef.current && !isStationary) {
+        calculatedHeading = calculateBearing(prevCoordsRef.current, currentCoords);
       }
 
       if (rawHeading !== null && rawHeading !== undefined && !isNaN(rawHeading) && rawHeading >= 0) {
@@ -176,7 +190,7 @@ export function useLocationTracker(initialCoords?: LatLng) {
         setState((prev) => ({
           ...prev,
           coordinates: routeCoordinates[currentIndex],
-          speed: speedKmh + Math.round((Math.random() - 0.5) * 6), // slight realistic variance
+          speed: speedKmh,
           heading,
           timestamp: Date.now(),
           isStationary: false
