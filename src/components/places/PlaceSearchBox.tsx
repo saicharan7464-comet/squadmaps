@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Place, PlaceCategory } from '../../types/places';
 import { LatLng } from '../../types/navigation';
 import { nominatimPlacesProvider } from '../../services/places/nominatimPlacesProvider';
-import { Search, X, MapPin, Star, Navigation, Coffee, Fuel, Zap, Hotel, Utensils, Building } from 'lucide-react';
+import { Search, X, MapPin, Star, Navigation, Coffee, Fuel, Zap, Hotel, Utensils, Building, Home } from 'lucide-react';
 
 interface PlaceSearchBoxProps {
   userLocation: LatLng | null;
@@ -10,6 +10,8 @@ interface PlaceSearchBoxProps {
   onSuggestToSquad?: (place: Place) => void;
   placeholder?: string;
   isSquadActive?: boolean;
+  onGoHome?: () => void;
+  rightAction?: React.ReactNode;
 }
 
 const CATEGORIES: { id: PlaceCategory; label: string; icon: any }[] = [
@@ -26,7 +28,9 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
   onSelectPlace,
   onSuggestToSquad,
   placeholder = 'Search destination, city, or landmark...',
-  isSquadActive = false
+  isSquadActive = false,
+  onGoHome,
+  rightAction
 }) => {
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<PlaceCategory | null>(null);
@@ -98,7 +102,7 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: 'var(--z-controls)' }}>
-      {/* Search Input Bar */}
+      {/* Search Input Bar (Unified Google Maps Style Floating Pill) */}
       <div
         className="glass-panel"
         style={{
@@ -106,10 +110,34 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
           alignItems: 'center',
           padding: '8px 14px',
           gap: '10px',
-          backgroundColor: 'var(--bg-glass-card)'
+          backgroundColor: '#161B22',
+          border: '1px solid rgba(255, 255, 255, 0.16)',
+          borderRadius: '999px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
         }}
       >
-        <Search size={20} color="var(--accent-cyan)" />
+        {onGoHome ? (
+          <button
+            onClick={onGoHome}
+            title="Go to Home"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--accent-cyan)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '2px',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            <Home size={20} color="var(--accent-cyan)" />
+          </button>
+        ) : (
+          <Search size={20} color="var(--accent-cyan)" style={{ flexShrink: 0 }} />
+        )}
+
         <input
           type="text"
           value={query}
@@ -125,7 +153,8 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
             outline: 'none',
             color: '#FFFFFF',
             fontSize: '15px',
-            fontFamily: 'inherit'
+            fontFamily: 'inherit',
+            minWidth: 0
           }}
         />
 
@@ -137,26 +166,35 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
               borderRadius: '50%',
               border: '2px solid var(--accent-cyan)',
               borderTopColor: 'transparent',
-              animation: 'radarSweep 0.8s linear infinite'
+              animation: 'radarSweep 0.8s linear infinite',
+              flexShrink: 0
             }}
           />
         )}
 
         {query && (
-          <button onClick={handleClear} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
+          <button onClick={handleClear} style={{ background: 'transparent', color: 'var(--text-muted)', flexShrink: 0 }}>
             <X size={18} />
           </button>
         )}
+
+        {rightAction && (
+          <div style={{ display: 'flex', alignItems: 'center', borderLeft: '1px solid rgba(255,255,255,0.15)', paddingLeft: '8px', flexShrink: 0 }}>
+            {rightAction}
+          </div>
+        )}
       </div>
 
-      {/* Category Pills */}
+      {/* Full-width Scrollable Category Pills */}
       <div
         style={{
           display: 'flex',
           gap: '8px',
           overflowX: 'auto',
-          padding: '8px 0',
-          scrollbarWidth: 'none'
+          padding: '8px 0 2px 0',
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch',
+          width: '100%'
         }}
       >
         {CATEGORIES.map((cat) => {
@@ -170,15 +208,16 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '6px 12px',
+                padding: '7px 13px',
                 borderRadius: '999px',
                 fontSize: '12px',
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
-                background: isSelected ? 'var(--accent-cyan)' : 'var(--bg-glass)',
+                background: isSelected ? 'var(--accent-cyan)' : 'rgba(22, 27, 34, 0.85)',
                 color: isSelected ? 'var(--text-inverse)' : 'var(--text-primary)',
-                border: `1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
-                boxShadow: 'var(--shadow-sm)'
+                border: `1px solid ${isSelected ? 'var(--accent-cyan)' : 'rgba(255, 255, 255, 0.12)'}`,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
+                flexShrink: 0
               }}
             >
               <Icon size={14} />
