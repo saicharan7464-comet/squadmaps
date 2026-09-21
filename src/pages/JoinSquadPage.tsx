@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Squad } from '../types/squad';
+import { LatLng } from '../types/navigation';
 import { squadDataService } from '../services/firebase/squadDataService';
 import { formatDistance, formatDuration } from '../utils/format';
 import { useAuth } from '../features/auth/AuthContext';
+import { useSquad } from '../features/squad/SquadContext';
 import {
   Car,
   Bike,
@@ -27,7 +29,8 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
   onCancel,
   onRequestLocation
 }) => {
-  const { user } = useAuth();
+  const { user, loginAsGuest } = useAuth();
+  const { joinSquad } = useSquad();
   const [squad, setSquad] = useState<Squad | null>(null);
   const [memberCount, setMemberCount] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,21 +68,41 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
 
   const handleConfirmJoinWithLocation = async () => {
     setIsJoining(true);
+    let coords: LatLng | undefined;
     try {
-      // Request location permission
-      await onRequestLocation();
+      if ('geolocation' in navigator) {
+        coords = await new Promise<LatLng | undefined>((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+            () => resolve(undefined),
+            { timeout: 5000, maximumAge: 60000 }
+          );
+        });
+      }
+      let currentUser = user;
+      if (!currentUser) {
+        currentUser = await loginAsGuest();
+      }
       if (squad) {
+        await joinSquad(squad.squadId, coords);
         onJoinSuccess(squad);
       }
     } catch (err) {
-      console.warn('Location permission handled:', err);
+      console.warn('Location permission or join error:', err);
       if (squad) {
+        try {
+          if (!user) await loginAsGuest();
+          await joinSquad(squad.squadId);
+        } catch (e) {
+          console.warn('Fallback join error:', e);
+        }
         onJoinSuccess(squad);
       }
     } finally {
       setIsJoining(false);
     }
   };
+
 
   const renderVehicleIcon = (mode: string) => {
     switch (mode) {

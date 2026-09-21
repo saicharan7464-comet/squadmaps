@@ -29,7 +29,7 @@ interface SquadContextType {
     vehicleMode: VehicleMode,
     canonicalRoute: Route
   ) => Promise<string>;
-  joinSquad: (squadId: string) => Promise<boolean>;
+  joinSquad: (squadId: string, initialCoords?: LatLng) => Promise<boolean>;
   leaveSquad: () => Promise<void>;
   updateMyLocation: (
     coords: LatLng,
@@ -268,7 +268,7 @@ export const SquadProvider: React.FC<{
   };
 
   // JOIN SQUAD
-  const joinSquad = async (squadId: string): Promise<boolean> => {
+  const joinSquad = async (squadId: string, initialCoords?: LatLng): Promise<boolean> => {
     if (!user) return false;
 
     const existingSquad = await squadDataService.getSquad(squadId);
@@ -276,13 +276,17 @@ export const SquadProvider: React.FC<{
       return false;
     }
 
+    const startLat = initialCoords?.lat || userCoords?.lat || existingSquad.canonicalRoute.polyline[0]?.lat || 0;
+    const startLng = initialCoords?.lng || userCoords?.lng || existingSquad.canonicalRoute.polyline[0]?.lng || 0;
+
     const member: SquadMember = {
       userId: user.id,
       name: user.name,
       profileImage: user.avatar,
       color: user.color,
-      latitude: userCoords?.lat || existingSquad.canonicalRoute.polyline[0]?.lat || 0,
-      longitude: userCoords?.lng || existingSquad.canonicalRoute.polyline[0]?.lng || 0,
+      latitude: startLat,
+      longitude: startLng,
+
       speed: 0,
       heading: 0,
       accuracy: 10,

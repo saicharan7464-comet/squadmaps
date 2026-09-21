@@ -37,7 +37,8 @@ type AppView = 'home' | 'join' | 'map';
 const NavigationCockpit: React.FC<{
   onGoHome: () => void;
   openCreateSquadOnMount?: boolean;
-}> = ({ onGoHome, openCreateSquadOnMount = false }) => {
+  autoStartNavigationOnMount?: boolean;
+}> = ({ onGoHome, openCreateSquadOnMount = false, autoStartNavigationOnMount = false }) => {
   const { user } = useAuth();
   const {
     squad,
@@ -69,7 +70,7 @@ const NavigationCockpit: React.FC<{
 
   // Navigation State
   const [activeRoute, setActiveRoute] = useState<Route | null>(squad?.canonicalRoute || null);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(autoStartNavigationOnMount || false);
   const [selectedDestination, setSelectedDestination] = useState<Place | null>(null);
 
   // UI Drawers & Modals
@@ -84,12 +85,31 @@ const NavigationCockpit: React.FC<{
   const [isConvoyDemoActive, setIsConvoyDemoActive] = useState(false);
   const convoyIntervalRef = useRef<any>(null);
 
-  // Sync active route with squad canonical route
+  // Sync active route with squad canonical route or recalculate from member position to destination
   useEffect(() => {
     if (squad?.canonicalRoute) {
-      setActiveRoute(squad.canonicalRoute);
+      if (autoStartNavigationOnMount) {
+        setIsNavigating(true);
+      }
+      if (!isHost && location.coordinates && squad.destinationCoordinates) {
+        routingProvider
+          .calculateRoutes(location.coordinates, squad.destinationCoordinates, squad.vehicleMode || 'car')
+          .then((routes) => {
+            if (routes && routes.length > 0) {
+              setActiveRoute(routes[0]);
+            } else {
+              setActiveRoute(squad.canonicalRoute);
+            }
+          })
+          .catch(() => {
+            setActiveRoute(squad.canonicalRoute);
+          });
+      } else {
+        setActiveRoute(squad.canonicalRoute);
+      }
     }
-  }, [squad?.canonicalRoute]);
+  }, [squad?.canonicalRoute, location.coordinates, isHost, autoStartNavigationOnMount]);
+
 
   // Turn-by-turn engine
   const turnByTurn = useTurnByTurn({
@@ -702,13 +722,17 @@ export default function App() {
     }
   }, []);
 
+  const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
+
   const handleStartNavigating = () => {
     setOpenCreateOnCockpit(false);
+    setAutoStartNavOnCockpit(true);
     setCurrentView('map');
   };
 
   const handleCreateSquad = () => {
     setOpenCreateOnCockpit(true);
+    setAutoStartNavOnCockpit(false);
     setCurrentView('map');
   };
 
@@ -733,6 +757,7 @@ export default function App() {
             <JoinSquadPage
               squadId={targetSquadId}
               onJoinSuccess={() => {
+                setAutoStartNavOnCockpit(true);
                 setCurrentView('map');
               }}
               onCancel={() => {
@@ -756,6 +781,7 @@ export default function App() {
             <NavigationCockpit
               onGoHome={() => setCurrentView('home')}
               openCreateSquadOnMount={openCreateOnCockpit}
+              autoStartNavigationOnMount={autoStartNavOnCockpit}
             />
           )}
         </div>
