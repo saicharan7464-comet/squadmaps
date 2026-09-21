@@ -5,6 +5,7 @@ import { PlaceSearchBox } from '../places/PlaceSearchBox';
 import { routingProvider } from '../../services/routing';
 import { formatDistance, formatDuration } from '../../utils/format';
 import { QRCodeSVG } from 'qrcode.react';
+import { getInviteUrl } from '../../utils/inviteUrl';
 import {
   Car,
   Bike,
@@ -113,7 +114,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
     setStep(5);
   };
 
-  const inviteUrl = createdSquadId ? `${window.location.origin}/join/${createdSquadId}` : '';
+  const inviteUrl = createdSquadId ? getInviteUrl(createdSquadId) : '';
 
   const handleCopy = () => {
     navigator.clipboard.writeText(inviteUrl);

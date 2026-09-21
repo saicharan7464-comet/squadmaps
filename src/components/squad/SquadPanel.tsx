@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Squad, SquadMember, SquadProgress } from '../../types/squad';
 import { SquadMemberCard } from './SquadMemberCard';
+import { getInviteUrl } from '../../utils/inviteUrl';
 import {
   Users,
   Share2,
@@ -43,7 +44,7 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
-  const inviteUrl = `${window.location.origin}/join/${squad.squadId}`;
+  const inviteUrl = getInviteUrl(squad.squadId);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inviteUrl);

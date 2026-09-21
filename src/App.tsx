@@ -673,21 +673,32 @@ export default function App() {
   const [targetSquadId, setTargetSquadId] = useState<string | null>(null);
   const [openCreateOnCockpit, setOpenCreateOnCockpit] = useState(false);
 
-  // Check URL on load for invite links (e.g. /join/SQ-1234 or ?join=SQ-1234)
+  // Check URL on load for invite links (?join=SQ-1234, /join/SQ-1234, #join=SQ-1234)
   useEffect(() => {
-    const path = window.location.pathname;
     const searchParams = new URLSearchParams(window.location.search);
     const joinParam = searchParams.get('join');
+    const path = window.location.pathname;
+    const hash = window.location.hash;
 
-    if (path.startsWith('/join/')) {
-      const id = path.replace('/join/', '').trim().toUpperCase();
-      if (id) {
-        setTargetSquadId(id);
-        setCurrentView('join');
-      }
-    } else if (joinParam) {
+    if (joinParam) {
       setTargetSquadId(joinParam.trim().toUpperCase());
       setCurrentView('join');
+    } else if (path.includes('/join/')) {
+      const parts = path.split('/join/');
+      if (parts[1]) {
+        const id = parts[1].split('/')[0].split('?')[0].trim().toUpperCase();
+        if (id) {
+          setTargetSquadId(id);
+          setCurrentView('join');
+        }
+      }
+    } else if (hash.includes('join=')) {
+      const hashParams = new URLSearchParams(hash.replace(/^#\/?/, ''));
+      const id = hashParams.get('join');
+      if (id) {
+        setTargetSquadId(id.trim().toUpperCase());
+        setCurrentView('join');
+      }
     }
   }, []);
 

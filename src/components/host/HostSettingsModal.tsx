@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Squad, SquadMember } from '../../types/squad';
 import { QRCodeSVG } from 'qrcode.react';
+import { getInviteUrl } from '../../utils/inviteUrl';
 import { Settings, X, Edit3, Trash2, AlertOctagon, UserX, Share2, Copy, Check } from 'lucide-react';
 
 interface HostSettingsModalProps {
@@ -30,7 +31,7 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const inviteUrl = `${window.location.origin}/join/${squad.squadId}`;
+  const inviteUrl = getInviteUrl(squad.squadId);
 
   const handleRename = (e: React.FormEvent) => {
     e.preventDefault();
