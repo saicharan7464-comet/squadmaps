@@ -15,18 +15,23 @@ import {
   addDoc
 } from 'firebase/firestore';
 
+const cleanForFirestore = <T>(obj: T): T => {
+  return JSON.parse(JSON.stringify(obj));
+};
+
 export class SquadDataService {
   // SQUAD
   async saveSquad(squad: Squad): Promise<void> {
     if (isFirebaseConfigured() && db) {
       try {
-        await setDoc(doc(db, 'squads', squad.squadId), squad);
+        await setDoc(doc(db, 'squads', squad.squadId), cleanForFirestore(squad));
       } catch (err) {
         console.warn('Firestore saveSquad error:', err);
       }
     }
     localSyncService.saveSquad(squad);
   }
+
 
   async getSquad(squadId: string): Promise<Squad | null> {
     if (isFirebaseConfigured() && db) {
@@ -80,7 +85,7 @@ export class SquadDataService {
   async updateMember(squadId: string, member: SquadMember): Promise<void> {
     if (isFirebaseConfigured() && db) {
       try {
-        await setDoc(doc(db, 'squads', squadId, 'members', member.userId), member);
+        await setDoc(doc(db, 'squads', squadId, 'members', member.userId), cleanForFirestore(member));
       } catch (err) {
         console.warn('Firestore updateMember error:', err);
       }
@@ -121,7 +126,7 @@ export class SquadDataService {
   async sendMessage(squadId: string, message: ChatMessage): Promise<void> {
     if (isFirebaseConfigured() && db) {
       try {
-        await addDoc(collection(db, 'squads', squadId, 'messages'), message);
+        await addDoc(collection(db, 'squads', squadId, 'messages'), cleanForFirestore(message));
       } catch (err) {
         console.warn('Firestore sendMessage error:', err);
       }
@@ -153,7 +158,7 @@ export class SquadDataService {
   async saveSuggestion(squadId: string, suggestion: PlaceSuggestion): Promise<void> {
     if (isFirebaseConfigured() && db) {
       try {
-        await setDoc(doc(db, 'squads', squadId, 'suggestions', suggestion.id), suggestion);
+        await setDoc(doc(db, 'squads', squadId, 'suggestions', suggestion.id), cleanForFirestore(suggestion));
       } catch (err) {
         console.warn('Firestore saveSuggestion error:', err);
       }
