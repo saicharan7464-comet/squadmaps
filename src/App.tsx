@@ -37,8 +37,7 @@ type AppView = 'home' | 'join' | 'map';
 const NavigationCockpit: React.FC<{
   onGoHome: () => void;
   openCreateSquadOnMount?: boolean;
-  autoStartNavigation?: boolean;
-}> = ({ onGoHome, openCreateSquadOnMount = false, autoStartNavigation = false }) => {
+}> = ({ onGoHome, openCreateSquadOnMount = false }) => {
   const { user } = useAuth();
   const {
     squad,
@@ -72,10 +71,6 @@ const NavigationCockpit: React.FC<{
   const [activeRoute, setActiveRoute] = useState<Route | null>(squad?.canonicalRoute || null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<Place | null>(null);
-  const [isAutoCentered, setIsAutoCentered] = useState(true);
-  const [recenterTrigger, setRecenterTrigger] = useState(0);
-  const [resetNorthTrigger, setResetNorthTrigger] = useState(0);
-  const [toggleOverviewTrigger, setToggleOverviewTrigger] = useState(0);
 
   // UI Drawers & Modals
   const [isCreateSquadOpen, setIsCreateSquadOpen] = useState(openCreateSquadOnMount);
@@ -161,53 +156,11 @@ const NavigationCockpit: React.FC<{
     }
   };
 
-  // Start Navigation (Focus immediately on person's location at zoom 18)
-  const handleStartNavigation = async () => {
+  // Start Navigation
+  const handleStartNavigation = () => {
+    if (!activeRoute) return;
     setIsNavigating(true);
     setIsSquadPanelOpen(false);
-    setIsAutoCentered(true);
-    setRecenterTrigger((prev) => prev + 1);
-
-    // If no active route exists, generate a smart route ahead or from current location
-    if (!activeRoute) {
-      const origin: LatLng = location.coordinates || { lat: 17.385, lng: 78.4867 };
-      const target: LatLng = {
-        lat: origin.lat + 0.025,
-        lng: origin.lng + 0.015
-      };
-      try {
-        const calculatedRoutes = await routingProvider.calculateRoutes(
-          origin,
-          target,
-          squad?.vehicleMode || 'car'
-        );
-        if (calculatedRoutes.length > 0) {
-          setActiveRoute(calculatedRoutes[0]);
-        }
-      } catch (err) {
-        console.warn('Auto route generation error:', err);
-      }
-    }
-  };
-
-  // Auto-start navigation if requested
-  useEffect(() => {
-    if (autoStartNavigation) {
-      handleStartNavigation();
-    }
-  }, [autoStartNavigation]);
-
-  const handleRecenter = () => {
-    setIsAutoCentered(true);
-    setRecenterTrigger((prev) => prev + 1);
-  };
-
-  const handleResetNorth = () => {
-    setResetNorthTrigger((prev) => prev + 1);
-  };
-
-  const handleToggleOverview = () => {
-    setToggleOverviewTrigger((prev) => prev + 1);
   };
 
   // Exit Navigation
@@ -320,14 +273,9 @@ const NavigationCockpit: React.FC<{
         focusedMemberId={focusedMemberId}
         onMemberClick={handleLocateMember}
         isNavigating={isNavigating}
-        isAutoCentered={isAutoCentered}
-        onAutoCenterChange={setIsAutoCentered}
-        recenterTrigger={recenterTrigger}
-        resetNorthTrigger={resetNorthTrigger}
-        toggleOverviewTrigger={toggleOverviewTrigger}
       />
 
-      {/* Top Turn-by-Turn HUD (When Navigating - Picture 2 Layout) */}
+      {/* Top Turn-by-Turn HUD (When Navigating) */}
       {isNavigating && (
         <TurnByTurnHUD
           currentStep={turnByTurn.currentStep}
@@ -341,73 +289,77 @@ const NavigationCockpit: React.FC<{
           voiceMuted={turnByTurn.voiceMuted}
           onToggleVoice={turnByTurn.toggleVoiceMute}
           onExitNavigation={handleExitNavigation}
-          onRecenter={handleRecenter}
-          isAutoCentered={isAutoCentered}
-          onResetNorth={handleResetNorth}
-          onToggleOverview={handleToggleOverview}
         />
       )}
 
-      {/* Top Search Bar & Header (When NOT Navigating - Clean Google Maps Floating Pill) */}
+      {/* Top Search Bar & Header (When NOT Navigating) */}
       {!isNavigating && (
         <div
           style={{
             position: 'absolute',
-            top: '12px',
-            left: '12px',
-            right: '12px',
+            top: '16px',
+            left: '16px',
+            right: '16px',
             zIndex: 'var(--z-controls)',
             maxWidth: '560px',
             margin: '0 auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px'
+            gap: '8px'
           }}
         >
-          <PlaceSearchBox
-            userLocation={location.coordinates}
-            onSelectPlace={handleSelectPlace}
-            onSuggestToSquad={squad ? (place) => suggestPlace(place) : undefined}
-            isSquadActive={Boolean(squad)}
-            onGoHome={onGoHome}
-            placeholder={
-              squad ? `Searching stops near ${squad.destination}...` : 'Search destination...'
-            }
-            rightAction={
-              squad ? (
-                <button
-                  onClick={() => setIsChatOpen(true)}
-                  title="Squad Chat Radio"
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--accent-cyan)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    padding: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <MessageSquare size={18} color="var(--accent-cyan)" />
-                  {messages.length > 0 && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '2px',
-                        right: '2px',
-                        width: '7px',
-                        height: '7px',
-                        borderRadius: '50%',
-                        backgroundColor: 'var(--accent-green)'
-                      }}
-                    />
-                  )}
-                </button>
-              ) : undefined
-            }
-          />
+          {/* Top Bar with Home Button, Search, and Squad Indicator */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              className="btn-icon"
+              onClick={onGoHome}
+              title="Go to Home"
+              style={{ flexShrink: 0, width: '46px', height: '46px' }}
+            >
+              <Home size={20} color="var(--accent-cyan)" />
+            </button>
+
+            <div style={{ flex: 1 }}>
+              <PlaceSearchBox
+                userLocation={location.coordinates}
+                onSelectPlace={handleSelectPlace}
+                onSuggestToSquad={squad ? (place) => suggestPlace(place) : undefined}
+                isSquadActive={Boolean(squad)}
+                placeholder={
+                  squad ? `Searching stops near ${squad.destination}...` : 'Search destination...'
+                }
+              />
+            </div>
+
+            {squad && (
+              <button
+                className="btn-icon"
+                onClick={() => setIsChatOpen(true)}
+                title="Squad Chat Radio"
+                style={{
+                  flexShrink: 0,
+                  width: '46px',
+                  height: '46px',
+                  position: 'relative'
+                }}
+              >
+                <MessageSquare size={20} color="var(--accent-cyan)" />
+                {messages.length > 0 && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-green)'
+                    }}
+                  />
+                )}
+              </button>
+            )}
+          </div>
 
           {/* Active Route Summary Bar if route selected */}
           {activeRoute && !squad && (
@@ -418,14 +370,11 @@ const NavigationCockpit: React.FC<{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                backgroundColor: 'rgba(17, 24, 39, 0.95)',
-                border: '1px solid rgba(255, 255, 255, 0.16)',
-                borderRadius: '16px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                backgroundColor: 'var(--bg-glass-card)'
               }}
             >
               <div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 700 }}>
                   SELECTED ROUTE
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF' }}>
@@ -440,25 +389,18 @@ const NavigationCockpit: React.FC<{
                 <button
                   onClick={() => setIsCreateSquadOpen(true)}
                   className="btn-secondary"
-                  style={{ fontSize: '13px', padding: '8px 14px', borderRadius: '999px' }}
+                  style={{ fontSize: '13px', padding: '8px 14px' }}
                 >
                   <Users size={16} color="var(--accent-cyan)" />
-                  <span>Squad</span>
+                  <span>Create Squad</span>
                 </button>
                 <button
                   onClick={handleStartNavigation}
                   className="btn-primary"
-                  style={{
-                    fontSize: '13px',
-                    padding: '8px 18px',
-                    borderRadius: '999px',
-                    background: 'linear-gradient(135deg, #22C55E, #16A34A)',
-                    color: '#FFFFFF',
-                    boxShadow: '0 4px 14px rgba(34, 197, 94, 0.4)'
-                  }}
+                  style={{ fontSize: '13px', padding: '8px 16px' }}
                 >
                   <Navigation size={16} />
-                  <span>Start</span>
+                  <span>Start Nav</span>
                 </button>
               </div>
             </div>
@@ -730,7 +672,6 @@ export default function App() {
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [targetSquadId, setTargetSquadId] = useState<string | null>(null);
   const [openCreateOnCockpit, setOpenCreateOnCockpit] = useState(false);
-  const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
 
   // Check URL on load for invite links (e.g. /join/SQ-1234 or ?join=SQ-1234)
   useEffect(() => {
@@ -752,13 +693,11 @@ export default function App() {
 
   const handleStartNavigating = () => {
     setOpenCreateOnCockpit(false);
-    setAutoStartNavOnCockpit(true);
     setCurrentView('map');
   };
 
   const handleCreateSquad = () => {
     setOpenCreateOnCockpit(true);
-    setAutoStartNavOnCockpit(false);
     setCurrentView('map');
   };
 
@@ -804,12 +743,8 @@ export default function App() {
 
           {currentView === 'map' && (
             <NavigationCockpit
-              onGoHome={() => {
-                setAutoStartNavOnCockpit(false);
-                setCurrentView('home');
-              }}
+              onGoHome={() => setCurrentView('home')}
               openCreateSquadOnMount={openCreateOnCockpit}
-              autoStartNavigation={autoStartNavOnCockpit}
             />
           )}
         </div>

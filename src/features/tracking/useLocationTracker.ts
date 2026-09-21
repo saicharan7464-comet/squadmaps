@@ -141,13 +141,6 @@ export function useLocationTracker(initialCoords?: LatLng) {
       }));
     };
 
-    // Fast instant initial fix
-    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
-      enableHighAccuracy: true,
-      timeout: 5000,
-      maximumAge: 2000
-    });
-
     const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, {
       enableHighAccuracy: true,
       maximumAge: 2000,

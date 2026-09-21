@@ -20,11 +20,6 @@ interface MapViewProps {
   onMemberClick?: (member: SquadMember) => void;
   onMapClick?: (coords: LatLng) => void;
   isNavigating?: boolean;
-  isAutoCentered?: boolean;
-  onAutoCenterChange?: (autoCentered: boolean) => void;
-  recenterTrigger?: number;
-  resetNorthTrigger?: number;
-  toggleOverviewTrigger?: number;
 }
 
 export const MapView: React.FC<MapViewProps> = ({
@@ -40,23 +35,16 @@ export const MapView: React.FC<MapViewProps> = ({
   focusedMemberId,
   onMemberClick,
   onMapClick,
-  isNavigating = false,
-  isAutoCentered = true,
-  onAutoCenterChange,
-  recenterTrigger = 0,
-  resetNorthTrigger = 0,
-  toggleOverviewTrigger = 0
+  isNavigating = false
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
-  const altRouteMarkerRef = useRef<L.Marker | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const memberMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const destMarkerRef = useRef<L.Marker | null>(null);
   const regroupMarkerRef = useRef<L.Marker | null>(null);
   const placeMarkersRef = useRef<L.Marker[]>([]);
-  const hasCenteredInitialRef = useRef(false);
 
   const [mapLayer, setMapLayer] = useState<'dark' | 'streets' | 'satellite'>('dark');
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -97,7 +85,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
     const map = L.map(mapContainerRef.current, {
       center: defaultCenter,
-      zoom: userLocation ? 16 : 14,
+      zoom: 14,
       zoomControl: false,
       attributionControl: false
     });
@@ -111,13 +99,6 @@ export const MapView: React.FC<MapViewProps> = ({
     map.on('click', (e: L.LeafletMouseEvent) => {
       if (onMapClick) {
         onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
-      }
-    });
-
-    // Detect user pan/drag to decouple auto-centering
-    map.on('dragstart', () => {
-      if (onAutoCenterChange) {
-        onAutoCenterChange(false);
       }
     });
 
@@ -138,101 +119,25 @@ export const MapView: React.FC<MapViewProps> = ({
     tileLayerRef.current = tiles;
   }, [mapLayer]);
 
-  // Initial user location focus (smoothly move to person's location when detected)
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !userLocation || hasCenteredInitialRef.current || isNavigating) return;
-
-    hasCenteredInitialRef.current = true;
-    map.flyTo([userLocation.lat, userLocation.lng], 16, {
-      animate: true,
-      duration: 1.2
-    });
-  }, [userLocation, isNavigating]);
-
-  // Handle Navigation Camera Transitions (Fly to Person's Location at zoom 18)
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || !isNavigating) return;
-
-    const targetCoords = userLocation || (route?.polyline && route.polyline.length > 0 ? route.polyline[0] : null) || { lat: 17.385, lng: 78.4867 };
-    map.setView([targetCoords.lat, targetCoords.lng], 18);
-    map.flyTo([targetCoords.lat, targetCoords.lng], 18, {
-      animate: true,
-      duration: 1.0
-    });
-    if (onAutoCenterChange) onAutoCenterChange(true);
-  }, [isNavigating, userLocation, route]);
-
-  // Handle Recenter trigger
-  useEffect(() => {
-    if (!recenterTrigger) return;
-    const map = mapInstanceRef.current;
-    if (map && userLocation) {
-      map.flyTo([userLocation.lat, userLocation.lng], 18, {
-        animate: true,
-        duration: 0.8
-      });
-      if (onAutoCenterChange) onAutoCenterChange(true);
-    }
-  }, [recenterTrigger]);
-
-  // Handle Reset North trigger
-  useEffect(() => {
-    if (!resetNorthTrigger) return;
-    const map = mapInstanceRef.current;
-    if (map && userLocation) {
-      map.flyTo([userLocation.lat, userLocation.lng], map.getZoom(), {
-        animate: true,
-        duration: 0.5
-      });
-      if (onAutoCenterChange) onAutoCenterChange(true);
-    }
-  }, [resetNorthTrigger]);
-
-  // Handle Route Overview trigger
-  useEffect(() => {
-    if (!toggleOverviewTrigger) return;
-    const map = mapInstanceRef.current;
-    if (map && route && route.bounds) {
-      map.fitBounds(
-        [
-          [route.bounds.south, route.bounds.west],
-          [route.bounds.north, route.bounds.east]
-        ],
-        { padding: [60, 60], animate: true }
-      );
-      if (onAutoCenterChange) onAutoCenterChange(false);
-    }
-  }, [toggleOverviewTrigger]);
-
-  // Update User Marker (Google Maps Navigation Puck)
+  // Update User Marker
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !userLocation) return;
 
-    const userIconHtml = isNavigating
-      ? `
-        <div class="google-nav-puck-container">
-          <div class="google-nav-puck-pulse"></div>
-          <div class="google-nav-heading-beam" style="transform: rotate(${userHeading}deg);"></div>
-          <div class="google-nav-puck-dot"></div>
+    const userIconHtml = `
+      <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+        <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(0, 230, 118, 0.2); animation: pulseGreen 2s infinite;"></div>
+        <div style="position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #00E676; border: 3px solid #FFFFFF; box-shadow: 0 0 12px rgba(0, 230, 118, 0.8); display: flex; align-items: center; justify-content: center; transform: rotate(${userHeading}deg);">
+          <div style="width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 7px solid #0A0E17;"></div>
         </div>
-      `
-      : `
-        <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
-          <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(26, 115, 232, 0.25); animation: pulseGreen 2s infinite;"></div>
-          <div style="position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #1A73E8; border: 3px solid #FFFFFF; box-shadow: 0 0 12px rgba(26, 115, 232, 0.8); display: flex; align-items: center; justify-content: center; transform: rotate(${userHeading}deg);">
-            <div style="width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 7px solid #FFFFFF;"></div>
-          </div>
-        </div>
-      `;
+      </div>
+    `;
 
     const customIcon = L.divIcon({
       html: userIconHtml,
       className: 'user-pulse-marker',
-      iconSize: [56, 56],
-      iconAnchor: [28, 28]
+      iconSize: [44, 44],
+      iconAnchor: [22, 22]
     });
 
     if (userMarkerRef.current) {
@@ -245,11 +150,10 @@ export const MapView: React.FC<MapViewProps> = ({
       }).addTo(map);
     }
 
-    // Follow user in navigation mode if auto-centered
-    if (isNavigating && isAutoCentered) {
+    if (isNavigating) {
       map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.5 });
     }
-  }, [userLocation, userHeading, isNavigating, isAutoCentered]);
+  }, [userLocation, userHeading, isNavigating]);
 
   // Update Squad Members Markers
   useEffect(() => {
@@ -353,7 +257,7 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [focusedMemberId, squadMembers]);
 
-  // Update Route Polyline (Shared Canonical Path - Google Maps royal blue)
+  // Update Route Polyline (Shared Canonical Path)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -362,60 +266,31 @@ export const MapView: React.FC<MapViewProps> = ({
       map.removeLayer(routePolylineRef.current);
       routePolylineRef.current = null;
     }
-    if (altRouteMarkerRef.current) {
-      map.removeLayer(altRouteMarkerRef.current);
-      altRouteMarkerRef.current = null;
-    }
 
     if (route && route.polyline && route.polyline.length > 0) {
       const latLngs: [number, number][] = route.polyline.map((p) => [p.lat, p.lng]);
 
-      // Outer casing line (Google Maps deep outline)
-      const casingLine = L.polyline(latLngs, {
-        color: isNavigating ? '#0D47A1' : '#00F0FF',
-        weight: isNavigating ? 9 : 8,
-        opacity: isNavigating ? 0.9 : 0.35,
+      // Glow backing line
+      const glowLine = L.polyline(latLngs, {
+        color: '#00F0FF',
+        weight: 9,
+        opacity: 0.35,
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map);
 
-      // Core route line (Google Maps bright royal blue in navigation, cyan in overview)
-      const coreLine = L.polyline(latLngs, {
-        color: isNavigating ? '#2563EB' : '#00D8F6',
-        weight: isNavigating ? 6 : 5,
-        opacity: 1,
+      // Main core route line
+      const mainLine = L.polyline(latLngs, {
+        color: '#00D8F6',
+        weight: 5,
+        opacity: 0.95,
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map);
 
       // Group into feature group for easy removal
-      const group = L.featureGroup([casingLine, coreLine]).addTo(map);
+      const group = L.featureGroup([glowLine, mainLine]).addTo(map);
       routePolylineRef.current = group as any;
-
-      // Alternative Route Bubble ("59 min slower" callout matching Picture 2)
-      if (isNavigating && route.polyline.length > 10) {
-        const midIdx = Math.floor(route.polyline.length * 0.45);
-        const midPoint = route.polyline[midIdx];
-
-        const bubbleHtml = `
-          <div style="background: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 4px; white-space: nowrap; pointer-events: none;">
-            <span>59 min slower</span>
-            <span style="opacity: 0.5;">🍃</span>
-          </div>
-        `;
-
-        const bubbleIcon = L.divIcon({
-          html: bubbleHtml,
-          className: 'alt-route-bubble',
-          iconSize: [110, 24],
-          iconAnchor: [55, 12]
-        });
-
-        altRouteMarkerRef.current = L.marker([midPoint.lat, midPoint.lng], {
-          icon: bubbleIcon,
-          zIndexOffset: 500
-        }).addTo(map);
-      }
 
       if (!isNavigating && route.bounds) {
         map.fitBounds(
@@ -541,7 +416,6 @@ export const MapView: React.FC<MapViewProps> = ({
         animate: true,
         duration: 0.8
       });
-      if (onAutoCenterChange) onAutoCenterChange(true);
     }
   };
 
@@ -561,73 +435,64 @@ export const MapView: React.FC<MapViewProps> = ({
     });
   };
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
       <div ref={mapContainerRef} className="map-container" />
 
-      {/* Floating Map Controls (Shown only when NOT navigating) */}
-      {!isNavigating && (
+      {/* Floating Map Controls */}
+      <div
+        style={{
+          position: 'absolute',
+          right: '16px',
+          bottom: isNavigating ? '120px' : '90px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          zIndex: 'var(--z-controls)'
+        }}
+      >
+        <button
+          className="btn-icon"
+          onClick={handleRecenter}
+          title="Recenter to my location"
+          style={{ background: userLocation ? 'var(--bg-glass)' : 'rgba(17,24,39,0.5)' }}
+        >
+          <Navigation size={20} color="var(--accent-cyan)" />
+        </button>
+
+        <button className="btn-icon" onClick={toggleLayer} title="Toggle Map Style">
+          <Layers size={20} />
+        </button>
+
         <div
           style={{
-            position: 'absolute',
-            right: '16px',
-            bottom: '90px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '10px',
-            zIndex: 'var(--z-controls)'
+            background: 'var(--bg-glass)',
+            borderRadius: 'var(--radius-full)',
+            border: '1px solid var(--border-subtle)',
+            overflow: 'hidden'
           }}
         >
-          {/* Recenter Button */}
           <button
             className="btn-icon"
-            onClick={handleRecenter}
-            title="Recenter to my location"
-            style={{ background: userLocation ? 'var(--bg-glass)' : 'rgba(17,24,39,0.5)' }}
+            onClick={handleZoomIn}
+            title="Zoom in"
+            style={{ borderRadius: 0, border: 'none', height: '40px' }}
           >
-            <Navigation size={20} color="var(--accent-cyan)" />
+            <Plus size={18} />
           </button>
-
-          {/* Map Layer Switcher */}
-          <button className="btn-icon" onClick={toggleLayer} title="Toggle Map Style">
-            <Layers size={20} />
+          <div style={{ height: '1px', background: 'var(--border-subtle)', width: '100%' }} />
+          <button
+            className="btn-icon"
+            onClick={handleZoomOut}
+            title="Zoom out"
+            style={{ borderRadius: 0, border: 'none', height: '40px' }}
+          >
+            <Minus size={18} />
           </button>
-
-          {/* Zoom Buttons (Hidden on mobile screens to save clutter, visible on desktop) */}
-          {!isMobile && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                background: 'var(--bg-glass)',
-                borderRadius: 'var(--radius-full)',
-                border: '1px solid var(--border-subtle)',
-                overflow: 'hidden'
-              }}
-            >
-              <button
-                className="btn-icon"
-                onClick={handleZoomIn}
-                title="Zoom in"
-                style={{ borderRadius: 0, border: 'none', height: '40px' }}
-              >
-                <Plus size={18} />
-              </button>
-              <div style={{ height: '1px', background: 'var(--border-subtle)', width: '100%' }} />
-              <button
-                className="btn-icon"
-                onClick={handleZoomOut}
-                title="Zoom out"
-                style={{ borderRadius: 0, border: 'none', height: '40px' }}
-              >
-                <Minus size={18} />
-              </button>
-            </div>
-          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
