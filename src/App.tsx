@@ -19,6 +19,7 @@ import { Place } from './types/places';
 import { Route, LatLng } from './types/navigation';
 import { SquadMember } from './types/squad';
 import { squadDataService } from './services/firebase/squadDataService';
+import { parseSquadId } from './utils/inviteUrl';
 import {
   Users,
   MessageSquare,
@@ -709,30 +710,10 @@ export default function App() {
 
   // Check URL on load for invite links (?join=SQ-1234, /join/SQ-1234, #join=SQ-1234)
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const joinParam = searchParams.get('join');
-    const path = window.location.pathname;
-    const hash = window.location.hash;
-
-    if (joinParam) {
-      setTargetSquadId(joinParam.trim().toUpperCase());
+    const detected = parseSquadId(window.location.href);
+    if (detected) {
+      setTargetSquadId(detected);
       setCurrentView('join');
-    } else if (path.includes('/join/')) {
-      const parts = path.split('/join/');
-      if (parts[1]) {
-        const id = parts[1].split('/')[0].split('?')[0].trim().toUpperCase();
-        if (id) {
-          setTargetSquadId(id);
-          setCurrentView('join');
-        }
-      }
-    } else if (hash.includes('join=')) {
-      const hashParams = new URLSearchParams(hash.replace(/^#\/?/, ''));
-      const id = hashParams.get('join');
-      if (id) {
-        setTargetSquadId(id.trim().toUpperCase());
-        setCurrentView('join');
-      }
     }
   }, []);
 

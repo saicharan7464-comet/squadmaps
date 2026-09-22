@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LatLng, Route, VehicleMode } from '../../types/navigation';
 import { Place } from '../../types/places';
 import { PlaceSearchBox } from '../places/PlaceSearchBox';
@@ -23,6 +23,8 @@ import {
   Sparkles
 } from 'lucide-react';
 
+import { useAuth } from '../../features/auth/AuthContext';
+
 interface CreateSquadWizardProps {
   isOpen: boolean;
   onClose: () => void;
@@ -32,7 +34,8 @@ interface CreateSquadWizardProps {
     destination: string,
     destinationCoords: LatLng,
     mode: VehicleMode,
-    selectedRoute: Route
+    selectedRoute: Route,
+    hostName?: string
   ) => Promise<string>;
 }
 
@@ -50,8 +53,10 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
   userLocation,
   onCreateSquad
 }) => {
+  const { user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [squadName, setSquadName] = useState('');
+  const [hostName, setHostName] = useState(user?.name || '');
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [vehicleMode, setVehicleMode] = useState<VehicleMode>('car');
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -59,6 +64,12 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [createdSquadId, setCreatedSquadId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (user?.name && !hostName) {
+      setHostName(user.name);
+    }
+  }, [user?.name]);
 
   if (!isOpen) return null;
 
@@ -102,12 +113,14 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
     const chosenRoute = routes[selectedRouteIndex];
 
     const finalName = squadName.trim() || `Trip to ${selectedPlace.name}`;
+    const finalHostName = hostName.trim() || user?.name || 'Squad Leader';
     const squadId = await onCreateSquad(
       finalName,
       selectedPlace.name,
       selectedPlace.coordinates,
       vehicleMode,
-      chosenRoute
+      chosenRoute,
+      finalHostName
     );
 
     setCreatedSquadId(squadId);
@@ -286,26 +299,50 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
         {/* STEP 4: Choose Route & Name Squad */}
         {step === 4 && (
           <div>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                Squad Name
-              </label>
-              <input
-                type="text"
-                value={squadName}
-                onChange={(e) => setSquadName(e.target.value)}
-                placeholder={`Trip to ${selectedPlace?.name}`}
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border-medium)',
-                  color: '#FFFFFF',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '18px' }}>
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Squad Name
+                </label>
+                <input
+                  type="text"
+                  value={squadName}
+                  onChange={(e) => setSquadName(e.target.value)}
+                  placeholder={`Trip to ${selectedPlace?.name}`}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-medium)',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Your Name (Squad Host)
+                </label>
+                <input
+                  type="text"
+                  value={hostName}
+                  onChange={(e) => setHostName(e.target.value)}
+                  placeholder="Enter your name"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-medium)',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
             </div>
 
             <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '10px' }}>

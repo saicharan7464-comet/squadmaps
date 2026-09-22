@@ -29,14 +29,21 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
   onCancel,
   onRequestLocation
 }) => {
-  const { user, loginAsGuest } = useAuth();
+  const { user, loginAsGuest, updateProfileName } = useAuth();
   const { joinSquad } = useSquad();
   const [squad, setSquad] = useState<Squad | null>(null);
   const [memberCount, setMemberCount] = useState<number>(1);
+  const [memberName, setMemberName] = useState<string>(user?.name || '');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+
+  useEffect(() => {
+    if (user?.name && !memberName) {
+      setMemberName(user.name);
+    }
+  }, [user?.name]);
 
   useEffect(() => {
     const fetchSquadDetails = async () => {
@@ -80,19 +87,24 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
         });
       }
       let currentUser = user;
+      const finalName = memberName.trim() || user?.name || 'Squad Member';
       if (!currentUser) {
-        currentUser = await loginAsGuest();
+        currentUser = await loginAsGuest(finalName);
+      } else {
+        updateProfileName(finalName);
       }
       if (squad) {
-        await joinSquad(squad.squadId, coords);
+        await joinSquad(squad.squadId, coords, finalName);
         onJoinSuccess(squad);
       }
     } catch (err) {
       console.warn('Location permission or join error:', err);
       if (squad) {
         try {
-          if (!user) await loginAsGuest();
-          await joinSquad(squad.squadId);
+          const finalName = memberName.trim() || user?.name || 'Squad Member';
+          if (!user) await loginAsGuest(finalName);
+          else updateProfileName(finalName);
+          await joinSquad(squad.squadId, undefined, finalName);
         } catch (e) {
           console.warn('Fallback join error:', e);
         }
@@ -278,6 +290,33 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Member Name Input */}
+        <div style={{ marginBottom: '22px', textAlign: 'left' }}>
+          <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+            Your Name / Squad Call Sign
+          </label>
+          <input
+            type="text"
+            value={memberName}
+            onChange={(e) => setMemberName(e.target.value)}
+            placeholder="Enter your name (e.g. Priya, John)"
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-medium)',
+              color: '#FFFFFF',
+              fontSize: '15px',
+              fontWeight: 600,
+              outline: 'none'
+            }}
+          />
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+            This name will be visible to all members in the convoy.
+          </p>
         </div>
 
         {/* Action Buttons */}

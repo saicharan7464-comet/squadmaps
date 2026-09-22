@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Navigation,
   Users,
@@ -10,8 +10,18 @@ import {
   ArrowRight,
   Shield,
   Radio,
-  ChevronRight
+  ChevronRight,
+  Camera,
+  QrCode,
+  Clipboard,
+  Link2,
+  Check,
+  User,
+  X
 } from 'lucide-react';
+import { useAuth } from '../features/auth/AuthContext';
+import { parseSquadId } from '../utils/inviteUrl';
+import { QRScannerModal } from '../components/common/QRScannerModal';
 
 interface HomePageProps {
   onOpenMap?: () => void;
@@ -65,14 +75,72 @@ export const HomePage: React.FC<HomePageProps> = ({
   onCreateSquad,
   onJoinSquad
 }) => {
+  const { user, updateProfileName } = useAuth();
   const [inputSquadId, setInputSquadId] = useState('');
+  const [joinUserName, setJoinUserName] = useState(user?.name || '');
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [feedback, setFeedback] = useState<{ text: string; isError?: boolean } | null>(null);
 
-  const handleJoinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (inputSquadId.trim()) {
-      onJoinSquad(inputSquadId.trim().toUpperCase());
+  useEffect(() => {
+    if (user?.name && !joinUserName) {
+      setJoinUserName(user.name);
     }
+  }, [user?.name]);
+
+  const handleInputChange = (val: string) => {
+    setFeedback(null);
+    const parsed = parseSquadId(val);
+    if (parsed && (val.includes('http') || val.includes('/') || val.includes('join'))) {
+      setInputSquadId(parsed);
+      setFeedback({ text: `Recognized URL → ${parsed}` });
+    } else {
+      setInputSquadId(val.toUpperCase());
+    }
+  };
+
+  const handlePasteClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const parsed = parseSquadId(text);
+        if (parsed) {
+          setInputSquadId(parsed);
+          setFeedback({ text: `Pasted & extracted: ${parsed}` });
+        } else {
+          setInputSquadId(text.trim());
+          setFeedback({ text: 'Could not extract valid squad code from clipboard text.', isError: true });
+        }
+      }
+    } catch {
+      setFeedback({ text: 'Please paste the URL or Squad ID directly into the input.', isError: true });
+    }
+  };
+
+  const handleJoinSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const parsed = parseSquadId(inputSquadId);
+    if (!parsed) {
+      setFeedback({ text: 'Please enter a valid Squad ID (e.g. SQ-92A4) or invite URL.', isError: true });
+      return;
+    }
+
+    if (joinUserName.trim()) {
+      updateProfileName(joinUserName.trim());
+    }
+
+    setShowJoinModal(false);
+    onJoinSquad(parsed);
+  };
+
+  const handleScanSuccess = (scannedSquadId: string) => {
+    setShowScanner(false);
+    setInputSquadId(scannedSquadId);
+    if (joinUserName.trim()) {
+      updateProfileName(joinUserName.trim());
+    }
+    setShowJoinModal(false);
+    onJoinSquad(scannedSquadId);
   };
 
   return (
@@ -305,45 +373,164 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div
             className="glass-panel animate-fade-in"
             style={{
-              maxWidth: '420px',
+              maxWidth: '460px',
               width: '100%',
               padding: '28px',
               backgroundColor: 'var(--bg-secondary)',
-              border: '1px solid var(--border-medium)'
+              border: '1px solid var(--border-medium)',
+              position: 'relative'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
-              Join a Squad
-            </h3>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              Enter the unique Squad ID provided by your convoy host (e.g. SQ-92A4).
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={22} color="var(--accent-cyan)" />
+                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF' }}>
+                  Join a Squad
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowJoinModal(false)}
+                className="btn-icon"
+                style={{ width: '32px', height: '32px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '18px' }}>
+              Connect with your convoy using an invite link, squad code, or QR scan.
             </p>
 
-            <form onSubmit={handleJoinSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <input
-                type="text"
-                value={inputSquadId}
-                onChange={(e) => setInputSquadId(e.target.value)}
-                placeholder="Enter Squad ID (e.g. SQ-92A4)"
-                className="font-mono"
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border-medium)',
-                  color: '#FFFFFF',
-                  fontSize: '16px',
-                  textAlign: 'center',
-                  letterSpacing: '2px',
-                  fontWeight: 700,
-                  outline: 'none',
-                  textTransform: 'uppercase'
-                }}
-              />
+            {/* Quick Action: Scan QR Code */}
+            <button
+              type="button"
+              onClick={() => setShowScanner(true)}
+              className="btn-secondary"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                marginBottom: '16px',
+                backgroundColor: 'rgba(0, 240, 255, 0.08)',
+                borderColor: 'var(--accent-cyan)',
+                color: 'var(--accent-cyan)',
+                fontWeight: 700
+              }}
+            >
+              <Camera size={18} />
+              <span>Scan Host's QR Code</span>
+            </button>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                OR ENTER DETAILS
+              </span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+            </div>
+
+            <form onSubmit={handleJoinSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Member Name Field */}
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Your Name
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <User size={16} color="var(--accent-cyan)" style={{ position: 'absolute', left: '12px', top: '14px' }} />
+                  <input
+                    type="text"
+                    value={joinUserName}
+                    onChange={(e) => setJoinUserName(e.target.value)}
+                    placeholder="Enter your name (e.g. Rahul, John)"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px 12px 38px',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'var(--bg-card)',
+                      border: '1px solid var(--border-medium)',
+                      color: '#FFFFFF',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Squad ID or URL Field */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                    Squad ID or Invite URL
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handlePasteClipboard}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--accent-cyan)',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Clipboard size={13} />
+                    <span>Paste</span>
+                  </button>
+                </div>
+
+                <div style={{ position: 'relative' }}>
+                  <Link2 size={16} color="var(--accent-cyan)" style={{ position: 'absolute', left: '12px', top: '14px' }} />
+                  <input
+                    type="text"
+                    value={inputSquadId}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    placeholder="e.g. SQ-92A4 or paste invite URL"
+                    className="font-mono"
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px 12px 38px',
+                      borderRadius: 'var(--radius-sm)',
+                      backgroundColor: 'var(--bg-card)',
+                      border: '1px solid var(--border-medium)',
+                      color: '#FFFFFF',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+
+                {/* Feedback note */}
+                {feedback && (
+                  <div
+                    style={{
+                      marginTop: '6px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: feedback.isError ? 'var(--accent-red)' : 'var(--accent-green)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {!feedback.isError && <Check size={14} />}
+                    <span>{feedback.text}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button
                   type="button"
                   onClick={() => setShowJoinModal(false)}
@@ -365,6 +552,13 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         </div>
       )}
+
+      {/* QR Code Camera Scanner Modal */}
+      <QRScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScanSuccess={handleScanSuccess}
+      />
     </div>
   );
 };

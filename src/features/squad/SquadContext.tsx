@@ -27,9 +27,10 @@ interface SquadContextType {
     destination: string,
     destinationCoordinates: LatLng,
     vehicleMode: VehicleMode,
-    canonicalRoute: Route
+    canonicalRoute: Route,
+    hostCustomName?: string
   ) => Promise<string>;
-  joinSquad: (squadId: string, initialCoords?: LatLng) => Promise<boolean>;
+  joinSquad: (squadId: string, initialCoords?: LatLng, customUserName?: string) => Promise<boolean>;
   leaveSquad: () => Promise<void>;
   updateMyLocation: (
     coords: LatLng,
@@ -62,7 +63,7 @@ export const SquadProvider: React.FC<{
   children: React.ReactNode;
   userCoords: LatLng | null;
 }> = ({ children, userCoords }) => {
-  const { user } = useAuth();
+  const { user, updateProfileName } = useAuth();
   const [squad, setSquad] = useState<Squad | null>(null);
   const [members, setMembers] = useState<SquadMember[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -212,9 +213,15 @@ export const SquadProvider: React.FC<{
     destination: string,
     destinationCoordinates: LatLng,
     vehicleMode: VehicleMode,
-    canonicalRoute: Route
+    canonicalRoute: Route,
+    hostCustomName?: string
   ): Promise<string> => {
     if (!user) throw new Error('User must be logged in to create a squad');
+
+    const effectiveHostName = hostCustomName?.trim() || user.name;
+    if (hostCustomName?.trim() && hostCustomName.trim() !== user.name) {
+      updateProfileName(hostCustomName.trim());
+    }
 
     // Generate unique squad ID (e.g. "SQ-92A4")
     const squadId = `SQ-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -222,7 +229,7 @@ export const SquadProvider: React.FC<{
     const newSquad: Squad = {
       squadId,
       hostId: user.id,
-      hostName: user.name,
+      hostName: effectiveHostName,
       name,
       destination,
       destinationCoordinates,
@@ -244,7 +251,7 @@ export const SquadProvider: React.FC<{
     // Add host as first squad member
     const hostMember: SquadMember = {
       userId: user.id,
-      name: user.name,
+      name: effectiveHostName,
       profileImage: user.avatar,
       color: user.color,
       latitude: userCoords?.lat || canonicalRoute.polyline[0]?.lat || 0,
@@ -268,8 +275,17 @@ export const SquadProvider: React.FC<{
   };
 
   // JOIN SQUAD
-  const joinSquad = async (squadId: string, initialCoords?: LatLng): Promise<boolean> => {
+  const joinSquad = async (
+    squadId: string,
+    initialCoords?: LatLng,
+    customUserName?: string
+  ): Promise<boolean> => {
     if (!user) return false;
+
+    const effectiveMemberName = customUserName?.trim() || user.name;
+    if (customUserName?.trim() && customUserName.trim() !== user.name) {
+      updateProfileName(customUserName.trim());
+    }
 
     const existingSquad = await squadDataService.getSquad(squadId);
     if (!existingSquad || existingSquad.status === 'ended') {
@@ -281,7 +297,7 @@ export const SquadProvider: React.FC<{
 
     const member: SquadMember = {
       userId: user.id,
-      name: user.name,
+      name: effectiveMemberName,
       profileImage: user.avatar,
       color: user.color,
       latitude: startLat,
@@ -308,10 +324,10 @@ export const SquadProvider: React.FC<{
       id: `msg-${Date.now()}`,
       squadId,
       senderId: user.id,
-      senderName: user.name,
+      senderName: effectiveMemberName,
       senderAvatar: user.avatar,
       senderColor: user.color,
-      text: `${user.name} joined the squad!`,
+      text: `${effectiveMemberName} joined the squad!`,
       type: 'alert',
       timestamp: Date.now()
     });
