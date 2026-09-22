@@ -80,6 +80,16 @@ export const SquadProvider: React.FC<{
     if (!squad?.squadId) return;
 
     const unsubSquad = squadDataService.subscribeToSquad(squad.squadId, (updated) => {
+      if (!updated || updated.status === 'ended') {
+        setSquad(null);
+        setMembers([]);
+        setMessages([]);
+        setSuggestions([]);
+        setFallingBehindAlert(null);
+        setArrivalNotification(null);
+        setFocusedMemberId(null);
+        return;
+      }
       setSquad(updated);
     });
 
@@ -501,9 +511,21 @@ export const SquadProvider: React.FC<{
 
   const endSquad = async () => {
     if (!isHost || !squad) return;
+    const squadId = squad.squadId;
     const updated: Squad = { ...squad, status: 'ended' };
-    await squadDataService.saveSquad(updated);
-    sendChat('The host has ended the squad session.');
+    try {
+      await squadDataService.saveSquad(updated);
+      await sendChat('The host has ended the squad session.');
+    } catch (e) {
+      console.warn('Error saving ended squad:', e);
+    }
+    setSquad(null);
+    setMembers([]);
+    setMessages([]);
+    setSuggestions([]);
+    setFallingBehindAlert(null);
+    setArrivalNotification(null);
+    setFocusedMemberId(null);
   };
 
   const updateSettings = async (settings: Partial<SquadSettings>) => {

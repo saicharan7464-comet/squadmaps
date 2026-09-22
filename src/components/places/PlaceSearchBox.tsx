@@ -10,6 +10,7 @@ interface PlaceSearchBoxProps {
   onSuggestToSquad?: (place: Place) => void;
   placeholder?: string;
   isSquadActive?: boolean;
+  showCategories?: boolean;
 }
 
 const CATEGORIES: { id: PlaceCategory; label: string; icon: any }[] = [
@@ -26,7 +27,8 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
   onSelectPlace,
   onSuggestToSquad,
   placeholder = 'Search destination, city, or landmark...',
-  isSquadActive = false
+  isSquadActive = false,
+  showCategories = true
 }) => {
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<PlaceCategory | null>(null);
@@ -150,43 +152,45 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
       </div>
 
       {/* Category Pills */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '8px',
-          overflowX: 'auto',
-          padding: '8px 0',
-          scrollbarWidth: 'none'
-        }}
-      >
-        {CATEGORIES.map((cat) => {
-          const Icon = cat.icon;
-          const isSelected = activeCategory === cat.id;
-          return (
-            <button
-              key={cat.id}
-              onClick={() => handleCategoryClick(cat.id)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                background: isSelected ? 'var(--accent-cyan)' : 'var(--bg-glass)',
-                color: isSelected ? 'var(--text-inverse)' : 'var(--text-primary)',
-                border: `1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
-                boxShadow: 'var(--shadow-sm)'
-              }}
-            >
-              <Icon size={14} />
-              <span>{cat.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {showCategories && (
+        <div
+          style={{
+            display: 'flex',
+            gap: '8px',
+            overflowX: 'auto',
+            padding: '8px 0',
+            scrollbarWidth: 'none'
+          }}
+        >
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+            const isSelected = activeCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => handleCategoryClick(cat.id)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '999px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  background: isSelected ? 'var(--accent-cyan)' : 'var(--bg-glass)',
+                  color: isSelected ? 'var(--text-inverse)' : 'var(--text-primary)',
+                  border: `1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                <Icon size={14} />
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Dropdown Results */}
       {isOpen && results.length > 0 && (

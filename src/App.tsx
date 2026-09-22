@@ -92,6 +92,7 @@ const NavigationCockpit: React.FC<{
   // Sync active route with squad canonical route or recalculate from member position to destination
   useEffect(() => {
     if (squad?.canonicalRoute) {
+      setIsSquadPanelOpen(true);
       if (autoStartNavigationOnMount) {
         setIsNavigating(true);
       }
@@ -111,8 +112,20 @@ const NavigationCockpit: React.FC<{
       } else {
         setActiveRoute(squad.canonicalRoute);
       }
+    } else {
+      // Squad ended or left: clean up navigation and modals
+      setActiveRoute(null);
+      setIsNavigating(false);
+      setSelectedDestination(null);
+      setIsHostSettingsOpen(false);
+      setIsChatOpen(false);
+      setIsRegroupOpen(false);
+      if (isConvoyDemoActive) {
+        clearInterval(convoyIntervalRef.current);
+        setIsConvoyDemoActive(false);
+      }
     }
-  }, [squad?.canonicalRoute, location.coordinates, isHost, autoStartNavigationOnMount]);
+  }, [squad?.canonicalRoute, squad?.squadId, location.coordinates, isHost, autoStartNavigationOnMount]);
 
 
   // Turn-by-turn engine
@@ -696,7 +709,14 @@ const NavigationCockpit: React.FC<{
           currentUserId={user?.id || ''}
           onRenameSquad={renameSquad}
           onRemoveMember={removeMember}
-          onEndSquad={endSquad}
+          onEndSquad={async () => {
+            await endSquad();
+            setIsHostSettingsOpen(false);
+            setIsSquadPanelOpen(false);
+            setActiveRoute(null);
+            setIsNavigating(false);
+            setSelectedDestination(null);
+          }}
         />
       )}
     </div>

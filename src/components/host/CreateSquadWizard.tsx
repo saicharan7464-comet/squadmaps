@@ -20,7 +20,9 @@ import {
   Navigation,
   Flag,
   MapPin,
-  Sparkles
+  Sparkles,
+  User,
+  Users
 } from 'lucide-react';
 
 import { useAuth } from '../../features/auth/AuthContext';
@@ -65,21 +67,27 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
   const [createdSquadId, setCreatedSquadId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Synchronize hostName with user profile and reset wizard state when opened
   useEffect(() => {
-    if (user?.name && !hostName) {
-      setHostName(user.name);
+    if (isOpen) {
+      setStep(1);
+      setSelectedPlace(null);
+      setCreatedSquadId(null);
+      setSquadName('');
+      if (user?.name) {
+        setHostName(user.name);
+      }
     }
-  }, [user?.name]);
+  }, [isOpen, user?.name]);
 
   if (!isOpen) return null;
 
   // Step 1: Select Destination
   const handleSelectPlace = async (place: Place) => {
     setSelectedPlace(place);
-    if (!squadName) {
+    if (!squadName.trim()) {
       setSquadName(`Trip to ${place.name}`);
     }
-    setStep(2);
   };
 
   // Step 2: Select Vehicle & Calculate Routes
@@ -177,7 +185,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
               STEP {step} OF 5
             </div>
             <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>
-              {step === 1 && 'Where are you heading?'}
+              {step === 1 && 'Create Your Squad'}
               {step === 2 && 'Choose your vehicle mode'}
               {step === 3 && 'Calculating best routes...'}
               {step === 4 && 'Select your squad route'}
@@ -189,17 +197,214 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
           </button>
         </div>
 
-        {/* STEP 1: Search Destination */}
+        {/* STEP 1: Host Name, Squad Name & Destination */}
         {step === 1 && (
-          <div>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Search for cities, landmarks, addresses, hotels, restaurants, or airports.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              Set up your convoy identity and choose the destination everyone will navigate to together.
             </p>
-            <PlaceSearchBox
-              userLocation={userLocation}
-              onSelectPlace={handleSelectPlace}
-              placeholder="Search destination (e.g. Goa, Airport, Hotel)..."
-            />
+
+            {/* Host Identity & Squad Name Card */}
+            <div
+              className="glass-card"
+              style={{
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+                border: '1px solid var(--border-medium)',
+                backgroundColor: 'rgba(21, 29, 44, 0.7)'
+              }}
+            >
+              {/* Host Name Field */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <User size={15} color="var(--accent-cyan)" />
+                    <span>Your Host Name</span>
+                  </label>
+                  <span
+                    style={{
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                      backgroundColor: 'rgba(0, 240, 255, 0.15)',
+                      color: 'var(--accent-cyan)',
+                      border: '1px solid rgba(0, 240, 255, 0.3)'
+                    }}
+                  >
+                    Convoy Lead
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={hostName}
+                  onChange={(e) => setHostName(e.target.value)}
+                  placeholder="Enter your name (e.g. Alex, Turbo Comet)"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border-medium)',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    outline: 'none',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent-cyan)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-medium)')}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                  This name will be visible to all members on the live GPS convoy map.
+                </span>
+              </div>
+
+              {/* Squad Name Field */}
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <Flag size={15} color="var(--accent-cyan)" />
+                  <span>Squad / Trip Name</span>
+                </label>
+                <input
+                  type="text"
+                  value={squadName}
+                  onChange={(e) => setSquadName(e.target.value)}
+                  placeholder={selectedPlace ? `Trip to ${selectedPlace.name}` : "e.g. Hyderabad Airport Run or Goa Trip"}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border-medium)',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    outline: 'none',
+                    transition: 'border-color 0.2s'
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent-cyan)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-medium)')}
+                />
+              </div>
+            </div>
+
+            {/* Destination Selection */}
+            <div>
+              <label style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                <MapPin size={15} color="var(--accent-cyan)" />
+                <span>Destination</span>
+              </label>
+
+              {!selectedPlace ? (
+                <div>
+                  <PlaceSearchBox
+                    userLocation={userLocation}
+                    onSelectPlace={handleSelectPlace}
+                    placeholder="Search city, airport, landmark, or venue..."
+                    showCategories={false}
+                  />
+                </div>
+              ) : (
+                <div
+                  className="glass-card animate-fade-in"
+                  style={{
+                    padding: '14px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    border: '1.5px solid var(--accent-cyan)',
+                    backgroundColor: 'rgba(0, 240, 255, 0.08)',
+                    borderRadius: 'var(--radius-sm)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        backgroundColor: 'rgba(0, 240, 255, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}
+                    >
+                      <MapPin size={22} color="var(--accent-cyan)" />
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: '15px',
+                          fontWeight: 800,
+                          color: '#FFFFFF',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {selectedPlace.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--text-secondary)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {selectedPlace.address}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPlace(null)}
+                    className="btn-secondary"
+                    style={{ fontSize: '12px', padding: '6px 12px', flexShrink: 0 }}
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Continue Button */}
+            <div style={{ marginTop: '4px' }}>
+              <button
+                type="button"
+                disabled={!selectedPlace || !hostName.trim()}
+                onClick={() => setStep(2)}
+                className="btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  fontSize: '15px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>Continue to Vehicle Selection</span>
+                <ArrowRight size={18} />
+              </button>
+
+              {(!selectedPlace || !hostName.trim()) && (
+                <p style={{ fontSize: '12px', color: 'var(--accent-amber)', textAlign: 'center', marginTop: '8px' }}>
+                  {!hostName.trim()
+                    ? '⚠️ Please enter your host name above to continue.'
+                    : '📍 Please search and select a destination above to continue.'}
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -296,53 +501,74 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
           </div>
         )}
 
-        {/* STEP 4: Choose Route & Name Squad */}
+        {/* STEP 4: Choose Route & Confirm Squad */}
         {step === 4 && (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '18px' }}>
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                  Squad Name
-                </label>
-                <input
-                  type="text"
-                  value={squadName}
-                  onChange={(e) => setSquadName(e.target.value)}
-                  placeholder={`Trip to ${selectedPlace?.name}`}
+            {/* Convoy Summary Card */}
+            <div
+              className="glass-card"
+              style={{
+                padding: '14px 16px',
+                marginBottom: '18px',
+                border: '1px solid var(--border-medium)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: 'rgba(0, 240, 255, 0.05)',
+                borderRadius: 'var(--radius-sm)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                <div
                   style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border-medium)',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    outline: 'none'
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
                   }}
-                />
+                >
+                  <Users size={20} color="var(--accent-cyan)" />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: '15px',
+                      fontWeight: 800,
+                      color: '#FFFFFF',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {squadName.trim() || `Trip to ${selectedPlace?.name}`}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      color: 'var(--text-secondary)',
+                      marginTop: '2px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Host: <strong style={{ color: 'var(--accent-cyan)' }}>{hostName.trim() || user?.name || 'Squad Leader'}</strong> • {selectedPlace?.name}
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-                  Your Name (Squad Host)
-                </label>
-                <input
-                  type="text"
-                  value={hostName}
-                  onChange={(e) => setHostName(e.target.value)}
-                  placeholder="Enter your name"
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border-medium)',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="btn-secondary"
+                style={{ fontSize: '12px', padding: '6px 12px', flexShrink: 0 }}
+              >
+                Edit Info
+              </button>
             </div>
 
             <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '10px' }}>

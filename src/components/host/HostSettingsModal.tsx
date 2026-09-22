@@ -12,7 +12,7 @@ interface HostSettingsModalProps {
   currentUserId: string;
   onRenameSquad: (name: string) => void;
   onRemoveMember: (userId: string) => void;
-  onEndSquad: () => void;
+  onEndSquad: () => void | Promise<void>;
 }
 
 export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
@@ -28,6 +28,20 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
   const [squadName, setSquadName] = useState(squad.name);
   const [copied, setCopied] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
+
+  const handleEndSquad = async () => {
+    setIsEnding(true);
+    try {
+      await onEndSquad();
+      onClose();
+    } catch (err) {
+      console.error('Failed to end squad session:', err);
+    } finally {
+      setIsEnding(false);
+      setConfirmEnd(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -221,14 +235,16 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
               </p>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
-                  onClick={onEndSquad}
+                  onClick={handleEndSquad}
+                  disabled={isEnding}
                   className="btn-primary"
                   style={{ flex: 1, backgroundColor: 'var(--accent-red)', color: '#FFFFFF' }}
                 >
-                  Yes, End Squad
+                  {isEnding ? 'Ending Squad...' : 'Yes, End Squad'}
                 </button>
                 <button
                   onClick={() => setConfirmEnd(false)}
+                  disabled={isEnding}
                   className="btn-secondary"
                   style={{ flex: 1 }}
                 >
