@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 interface HomePageProps {
+  onOpenMap?: () => void;
   onStartNavigating: () => void;
   onCreateSquad: () => void;
   onJoinSquad: (squadId: string) => void;
@@ -59,6 +60,7 @@ const FEATURE_CARDS = [
 ];
 
 export const HomePage: React.FC<HomePageProps> = ({
+  onOpenMap,
   onStartNavigating,
   onCreateSquad,
   onJoinSquad
@@ -122,7 +124,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         <button
-          onClick={onStartNavigating}
+          onClick={onOpenMap || onStartNavigating}
           className="btn-secondary"
           style={{ fontSize: '13px', padding: '8px 16px', borderRadius: 'var(--radius-full)' }}
         >
@@ -213,7 +215,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           </button>
 
           <button
-            onClick={onStartNavigating}
+            onClick={onOpenMap || onStartNavigating}
             className="btn-secondary"
             style={{
               padding: '16px 24px',

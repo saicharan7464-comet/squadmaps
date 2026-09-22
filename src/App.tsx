@@ -29,7 +29,8 @@ import {
   ChevronUp,
   ChevronDown,
   Sparkles,
-  Home
+  Home,
+  X
 } from 'lucide-react';
 
 type AppView = 'home' | 'join' | 'map';
@@ -70,7 +71,9 @@ const NavigationCockpit: React.FC<{
 
   // Navigation State
   const [activeRoute, setActiveRoute] = useState<Route | null>(squad?.canonicalRoute || null);
-  const [isNavigating, setIsNavigating] = useState(autoStartNavigationOnMount || false);
+  const [isNavigating, setIsNavigating] = useState(
+    Boolean(autoStartNavigationOnMount && squad?.canonicalRoute)
+  );
   const [selectedDestination, setSelectedDestination] = useState<Place | null>(null);
 
   // UI Drawers & Modals
@@ -405,7 +408,7 @@ const NavigationCockpit: React.FC<{
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
                   onClick={() => setIsCreateSquadOpen(true)}
                   className="btn-secondary"
@@ -421,6 +424,17 @@ const NavigationCockpit: React.FC<{
                 >
                   <Navigation size={16} />
                   <span>Start Nav</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveRoute(null);
+                    setSelectedDestination(null);
+                  }}
+                  className="btn-icon"
+                  title="Clear Route"
+                  style={{ width: '36px', height: '36px' }}
+                >
+                  <X size={16} color="var(--text-muted)" />
                 </button>
               </div>
             </div>
@@ -724,9 +738,9 @@ export default function App() {
 
   const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
 
-  const handleStartNavigating = () => {
+  const handleOpenMap = () => {
     setOpenCreateOnCockpit(false);
-    setAutoStartNavOnCockpit(true);
+    setAutoStartNavOnCockpit(false);
     setCurrentView('map');
   };
 
@@ -747,7 +761,8 @@ export default function App() {
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
           {currentView === 'home' && (
             <HomePage
-              onStartNavigating={handleStartNavigating}
+              onOpenMap={handleOpenMap}
+              onStartNavigating={handleOpenMap}
               onCreateSquad={handleCreateSquad}
               onJoinSquad={handleJoinSquadId}
             />
