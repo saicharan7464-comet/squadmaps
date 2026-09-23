@@ -29,6 +29,8 @@ const withTimeout = <T>(promise: Promise<T>, ms = 2000): Promise<T> => {
 };
 
 export class SquadDataService {
+  private lastMemberFirestoreWrite: Map<string, { timestamp: number; lat: number; lng: number; status: string }> = new Map();
+
   // SQUAD
   async saveSquad(squad: Squad): Promise<void> {
     // 1. Immediately persist locally so UI is never blocked
@@ -45,11 +47,18 @@ export class SquadDataService {
   }
 
   async getSquad(squadId: string): Promise<Squad | null> {
+    // 1. Check localSyncService first for instant resolution (e.g. from invite URL payload)
+    const local = localSyncService.getSquad(squadId);
+    if (local) return local;
+
+    // 2. Fall back to Firestore if not found locally
     if (isFirebaseConfigured() && db) {
       try {
         const snap = await withTimeout(getDoc(doc(db, 'squads', squadId)), 2000);
         if (snap.exists()) {
-          return snap.data() as Squad;
+          const remote = snap.data() as Squad;
+          localSyncService.saveSquad(remote);
+          return remote;
         }
       } catch (err) {
         console.warn('Firestore getSquad error/timeout, falling back to local storage:', err);
@@ -107,10 +116,26 @@ export class SquadDataService {
     localSyncService.updateMember(squadId, member);
 
     if (isFirebaseConfigured() && db) {
-      try {
-        await withTimeout(setDoc(doc(db, 'squads', squadId, 'members', member.userId), cleanForFirestore(member)), 2000);
-      } catch (err) {
-        // Silently warn to avoid console flood during GPS movement
+      const now = Date.now();
+      const lastWrite = this.lastMemberFirestoreWrite.get(member.userId);
+      const isStatusChange = !lastWrite || lastWrite.status !== member.status;
+      const isTimeElapsed = !lastWrite || (now - lastWrite.timestamp > 6000);
+      const dist = lastWrite ? Math.hypot(member.latitude - lastWrite.lat, member.longitude - lastWrite.lng) * 111000 : 999;
+      const isMovedSignificantly = dist > 15;
+
+      if (isStatusChange || (isTimeElapsed && isMovedSignificantly)) {
+        this.lastMemberFirestoreWrite.set(member.userId, {
+          timestamp: now,
+          lat: member.latitude,
+          lng: member.longitude,
+          status: member.status
+        });
+
+        try {
+          await withTimeout(setDoc(doc(db, 'squads', squadId, 'members', member.userId), cleanForFirestore(member)), 2000);
+        } catch (err) {
+          // Silently warn to avoid console flood during GPS movement
+        }
       }
     }
   }
