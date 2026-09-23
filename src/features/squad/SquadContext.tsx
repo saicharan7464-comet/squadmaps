@@ -226,11 +226,35 @@ export const SquadProvider: React.FC<{
     canonicalRoute: Route,
     hostCustomName?: string
   ): Promise<string> => {
-    if (!user) throw new Error('User must be logged in to create a squad');
+    let activeUser = user;
+    const effectiveHostName = hostCustomName?.trim() || user?.name || 'Squad Leader';
 
-    const effectiveHostName = hostCustomName?.trim() || user.name;
-    if (hostCustomName?.trim() && hostCustomName.trim() !== user.name) {
+    if (!activeUser) {
+      try {
+        const saved = typeof window !== 'undefined' ? localStorage.getItem('squadnav_user') : null;
+        if (saved) {
+          activeUser = JSON.parse(saved);
+        }
+      } catch {}
+      if (!activeUser) {
+        const id = `guest_${Math.random().toString(36).substring(2, 9)}`;
+        activeUser = {
+          id,
+          name: effectiveHostName,
+          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${id}`,
+          color: '#00F0FF',
+          isGuest: true,
+          createdAt: Date.now()
+        };
+        try {
+          localStorage.setItem('squadnav_user', JSON.stringify(activeUser));
+        } catch {}
+      }
+    }
+
+    if (hostCustomName?.trim() && hostCustomName.trim() !== activeUser.name) {
       updateProfileName(hostCustomName.trim());
+      activeUser = { ...activeUser, name: hostCustomName.trim() };
     }
 
     // Generate unique squad ID (e.g. "SQ-92A4")
@@ -238,7 +262,7 @@ export const SquadProvider: React.FC<{
 
     const newSquad: Squad = {
       squadId,
-      hostId: user.id,
+      hostId: activeUser.id,
       hostName: effectiveHostName,
       name,
       destination,
@@ -260,12 +284,12 @@ export const SquadProvider: React.FC<{
 
     // Add host as first squad member
     const hostMember: SquadMember = {
-      userId: user.id,
+      userId: activeUser.id,
       name: effectiveHostName,
-      profileImage: user.avatar,
-      color: user.color,
-      latitude: userCoords?.lat || canonicalRoute.polyline[0]?.lat || 0,
-      longitude: userCoords?.lng || canonicalRoute.polyline[0]?.lng || 0,
+      profileImage: activeUser.avatar,
+      color: activeUser.color,
+      latitude: userCoords?.lat || canonicalRoute.polyline?.[0]?.lat || destinationCoordinates.lat,
+      longitude: userCoords?.lng || canonicalRoute.polyline?.[0]?.lng || destinationCoordinates.lng,
       speed: 0,
       heading: 0,
       accuracy: 10,
@@ -290,11 +314,35 @@ export const SquadProvider: React.FC<{
     initialCoords?: LatLng,
     customUserName?: string
   ): Promise<boolean> => {
-    if (!user) return false;
+    let activeUser = user;
+    const effectiveMemberName = customUserName?.trim() || user?.name || 'Squad Member';
 
-    const effectiveMemberName = customUserName?.trim() || user.name;
-    if (customUserName?.trim() && customUserName.trim() !== user.name) {
+    if (!activeUser) {
+      try {
+        const saved = typeof window !== 'undefined' ? localStorage.getItem('squadnav_user') : null;
+        if (saved) {
+          activeUser = JSON.parse(saved);
+        }
+      } catch {}
+      if (!activeUser) {
+        const id = `guest_${Math.random().toString(36).substring(2, 9)}`;
+        activeUser = {
+          id,
+          name: effectiveMemberName,
+          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${id}`,
+          color: '#00E676',
+          isGuest: true,
+          createdAt: Date.now()
+        };
+        try {
+          localStorage.setItem('squadnav_user', JSON.stringify(activeUser));
+        } catch {}
+      }
+    }
+
+    if (customUserName?.trim() && customUserName.trim() !== activeUser.name) {
       updateProfileName(customUserName.trim());
+      activeUser = { ...activeUser, name: customUserName.trim() };
     }
 
     const existingSquad = await squadDataService.getSquad(squadId);
@@ -302,14 +350,14 @@ export const SquadProvider: React.FC<{
       return false;
     }
 
-    const startLat = initialCoords?.lat || userCoords?.lat || existingSquad.canonicalRoute.polyline[0]?.lat || 0;
-    const startLng = initialCoords?.lng || userCoords?.lng || existingSquad.canonicalRoute.polyline[0]?.lng || 0;
+    const startLat = initialCoords?.lat || userCoords?.lat || existingSquad.canonicalRoute.polyline?.[0]?.lat || 0;
+    const startLng = initialCoords?.lng || userCoords?.lng || existingSquad.canonicalRoute.polyline?.[0]?.lng || 0;
 
     const member: SquadMember = {
-      userId: user.id,
+      userId: activeUser.id,
       name: effectiveMemberName,
-      profileImage: user.avatar,
-      color: user.color,
+      profileImage: activeUser.avatar,
+      color: activeUser.color,
       latitude: startLat,
       longitude: startLng,
 
@@ -323,7 +371,7 @@ export const SquadProvider: React.FC<{
       status: 'active',
       online: true,
       vehicleMode: existingSquad.vehicleMode,
-      isHost: existingSquad.hostId === user.id
+      isHost: existingSquad.hostId === activeUser.id
     };
 
     await squadDataService.updateMember(squadId, member);
@@ -333,10 +381,10 @@ export const SquadProvider: React.FC<{
     await squadDataService.sendMessage(squadId, {
       id: `msg-${Date.now()}`,
       squadId,
-      senderId: user.id,
+      senderId: activeUser.id,
       senderName: effectiveMemberName,
-      senderAvatar: user.avatar,
-      senderColor: user.color,
+      senderAvatar: activeUser.avatar,
+      senderColor: activeUser.color,
       text: `${effectiveMemberName} joined the squad!`,
       type: 'alert',
       timestamp: Date.now()

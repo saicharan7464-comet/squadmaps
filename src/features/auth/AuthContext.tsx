@@ -42,8 +42,31 @@ const GUEST_NAMES = [
 ];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const saved = localStorage.getItem('squadnav_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+    const randomName = GUEST_NAMES[Math.floor(Math.random() * GUEST_NAMES.length)];
+    const id = `guest_${Math.random().toString(36).substring(2, 9)}`;
+    const color = SQUAD_COLORS[Math.floor(Math.random() * SQUAD_COLORS.length)];
+    const profile: UserProfile = {
+      id,
+      name: randomName,
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${id}`,
+      color,
+      isGuest: true,
+      createdAt: Date.now()
+    };
+    try {
+      localStorage.setItem('squadnav_user', JSON.stringify(profile));
+    } catch {}
+    return profile;
+  });
+  const [loading, setLoading] = useState<boolean>(false);
 
   // Initialize from localStorage or Firebase
   useEffect(() => {
@@ -60,31 +83,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             createdAt: Date.now()
           };
           setUser(profile);
-        } else {
-          checkLocalUser();
+          try {
+            localStorage.setItem('squadnav_user', JSON.stringify(profile));
+          } catch {}
         }
         setLoading(false);
       });
       return unsub;
     } else {
-      checkLocalUser();
       setLoading(false);
     }
   }, []);
-
-  const checkLocalUser = () => {
-    const saved = localStorage.getItem('squadnav_user');
-    if (saved) {
-      try {
-        setUser(JSON.parse(saved));
-      } catch {
-        // Create guest if corrupted
-        createGuestUser();
-      }
-    } else {
-      createGuestUser();
-    }
-  };
 
   const createGuestUser = (customName?: string): UserProfile => {
     const randomName = customName || GUEST_NAMES[Math.floor(Math.random() * GUEST_NAMES.length)];
@@ -98,7 +107,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isGuest: true,
       createdAt: Date.now()
     };
-    localStorage.setItem('squadnav_user', JSON.stringify(profile));
+    try {
+      localStorage.setItem('squadnav_user', JSON.stringify(profile));
+    } catch {}
     setUser(profile);
     return profile;
   };

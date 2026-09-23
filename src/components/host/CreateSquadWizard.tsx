@@ -66,6 +66,8 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [createdSquadId, setCreatedSquadId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Synchronize hostName with user profile and reset wizard state when opened
   useEffect(() => {
@@ -74,6 +76,8 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
       setSelectedPlace(null);
       setCreatedSquadId(null);
       setSquadName('');
+      setIsCreating(false);
+      setErrorMessage(null);
       if (user?.name) {
         setHostName(user.name);
       }
@@ -117,22 +121,37 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
   // Step 4: Finalize Squad Creation
   const handleFinalizeSquad = async () => {
-    if (!selectedPlace || routes.length === 0) return;
-    const chosenRoute = routes[selectedRouteIndex];
+    if (!selectedPlace || routes.length === 0 || isCreating) return;
+    const chosenRoute = routes[selectedRouteIndex] || routes[0];
+    if (!chosenRoute) return;
 
-    const finalName = squadName.trim() || `Trip to ${selectedPlace.name}`;
-    const finalHostName = hostName.trim() || user?.name || 'Squad Leader';
-    const squadId = await onCreateSquad(
-      finalName,
-      selectedPlace.name,
-      selectedPlace.coordinates,
-      vehicleMode,
-      chosenRoute,
-      finalHostName
-    );
+    setIsCreating(true);
+    setErrorMessage(null);
 
-    setCreatedSquadId(squadId);
-    setStep(5);
+    try {
+      const finalName = squadName.trim() || `Trip to ${selectedPlace.name}`;
+      const finalHostName = hostName.trim() || user?.name || 'Squad Leader';
+      const squadId = await onCreateSquad(
+        finalName,
+        selectedPlace.name,
+        selectedPlace.coordinates,
+        vehicleMode,
+        chosenRoute,
+        finalHostName
+      );
+
+      if (squadId) {
+        setCreatedSquadId(squadId);
+        setStep(5);
+      } else {
+        throw new Error('Failed to generate Squad session. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('Squad creation error:', err);
+      setErrorMessage(err?.message || 'Failed to create squad. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const inviteUrl = createdSquadId ? getInviteUrl(createdSquadId) : '';
@@ -626,12 +645,67 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
               })}
             </div>
 
+            {errorMessage && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  backgroundColor: 'rgba(255, 61, 113, 0.15)',
+                  border: '1px solid var(--accent-red)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'var(--accent-red)',
+                  fontSize: '13px',
+                  marginBottom: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>⚠️ {errorMessage}</span>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setStep(2)} className="btn-secondary" style={{ flex: 1 }}>
+              <button
+                onClick={() => setStep(2)}
+                className="btn-secondary"
+                style={{ flex: 1 }}
+                disabled={isCreating}
+              >
                 <ArrowLeft size={16} /> Back
               </button>
-              <button onClick={handleFinalizeSquad} className="btn-primary" style={{ flex: 2 }}>
-                <Sparkles size={18} /> Create Squad
+              <button
+                onClick={handleFinalizeSquad}
+                disabled={isCreating}
+                className="btn-primary"
+                style={{
+                  flex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: isCreating ? 0.75 : 1
+                }}
+              >
+                {isCreating ? (
+                  <>
+                    <div
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        border: '2px solid rgba(0, 0, 0, 0.25)',
+                        borderTopColor: '#000000',
+                        borderRadius: '50%',
+                        animation: 'radarSweep 0.8s linear infinite'
+                      }}
+                    />
+                    <span>Creating Squad...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={18} />
+                    <span>Create Squad</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

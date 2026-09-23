@@ -1,6 +1,7 @@
 import { Squad, SquadMember, RegroupPoint } from '../../types/squad';
 import { ChatMessage } from '../../types/chat';
 import { PlaceSuggestion } from '../../types/places';
+import { optimizeSquadForStorage } from '../../utils/routeOptimizer';
 
 type SquadListener = (squad: Squad | null) => void;
 type MembersListener = (members: SquadMember[]) => void;
@@ -14,6 +15,12 @@ class LocalSyncService {
   private messagesListeners: Map<string, Set<MessagesListener>> = new Map();
   private suggestionsListeners: Map<string, Set<SuggestionsListener>> = new Map();
 
+  // In-memory fallback caches so operations succeed even if localStorage quota is exceeded
+  private memorySquads: Map<string, Squad> = new Map();
+  private memoryMembers: Map<string, SquadMember[]> = new Map();
+  private memoryMessages: Map<string, ChatMessage[]> = new Map();
+  private memorySuggestions: Map<string, PlaceSuggestion[]> = new Map();
+
   constructor() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       this.channel = new BroadcastChannel('squadnav_sync_channel');
@@ -26,12 +33,16 @@ class LocalSyncService {
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
         if (e.key?.startsWith('squadnav_')) {
-          this.broadcastLocalState(e.key.replace('squadnav_', ''));
+          const parts = e.key.split('_');
+          const squadId = parts[parts.length - 1];
+          if (squadId) {
+            this.broadcastLocalState(squadId);
+          }
         }
       });
     }
 
-    // Periodic heartbeat checker to flag members as offline if inactive > 60s
+    // Periodic heartbeat checker to flag members as offline if inactive > 45s
     if (typeof window !== 'undefined') {
       setInterval(() => {
         this.checkMemberHeartbeats();
@@ -46,15 +57,19 @@ class LocalSyncService {
 
     switch (type) {
       case 'SQUAD_UPDATED':
+        if (payload) this.memorySquads.set(squadId, payload);
         this.notifySquadListeners(squadId, payload);
         break;
       case 'MEMBERS_UPDATED':
+        if (payload) this.memoryMembers.set(squadId, payload);
         this.notifyMembersListeners(squadId, payload);
         break;
       case 'MESSAGES_UPDATED':
+        if (payload) this.memoryMessages.set(squadId, payload);
         this.notifyMessagesListeners(squadId, payload);
         break;
       case 'SUGGESTIONS_UPDATED':
+        if (payload) this.memorySuggestions.set(squadId, payload);
         this.notifySuggestionsListeners(squadId, payload);
         break;
     }
@@ -62,7 +77,11 @@ class LocalSyncService {
 
   private broadcast(type: string, squadId: string, payload: any) {
     if (this.channel) {
-      this.channel.postMessage({ type, squadId, payload });
+      try {
+        this.channel.postMessage({ type, squadId, payload });
+      } catch (err) {
+        console.warn('BroadcastChannel error:', err);
+      }
     }
   }
 
@@ -70,18 +89,57 @@ class LocalSyncService {
     return `squadnav_${type}_${squadId}`;
   }
 
+  private cleanupOldStorage(keepSquadId?: string) {
+    if (typeof window === 'undefined') return;
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('squadnav_') && key !== 'squadnav_user') {
+          if (!keepSquadId || !key.includes(keepSquadId)) {
+            keysToRemove.push(key);
+          }
+        }
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    } catch {}
+  }
+
   // SQUAD OPERATIONS
   saveSquad(squad: Squad) {
-    localStorage.setItem(this.getStorageKey('squad', squad.squadId), JSON.stringify(squad));
-    this.notifySquadListeners(squad.squadId, squad);
-    this.broadcast('SQUAD_UPDATED', squad.squadId, squad);
+    const optimized = optimizeSquadForStorage(squad);
+    this.memorySquads.set(squad.squadId, optimized);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(this.getStorageKey('squad', squad.squadId), JSON.stringify(optimized));
+      } catch (err) {
+        console.warn('LocalStorage quota exceeded or unavailable while saving squad. Cleaning cache...', err);
+        this.cleanupOldStorage(squad.squadId);
+        try {
+          localStorage.setItem(this.getStorageKey('squad', squad.squadId), JSON.stringify(optimized));
+        } catch (retryErr) {
+          console.warn('LocalStorage save failed after cleanup, continuing with in-memory state:', retryErr);
+        }
+      }
+    }
+
+    this.notifySquadListeners(squad.squadId, optimized);
+    this.broadcast('SQUAD_UPDATED', squad.squadId, optimized);
   }
 
   getSquad(squadId: string): Squad | null {
-    const raw = localStorage.getItem(this.getStorageKey('squad', squadId));
-    if (!raw) return null;
+    if (this.memorySquads.has(squadId)) {
+      return this.memorySquads.get(squadId)!;
+    }
+
+    if (typeof window === 'undefined') return null;
     try {
-      return JSON.parse(raw);
+      const raw = localStorage.getItem(this.getStorageKey('squad', squadId));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      this.memorySquads.set(squadId, parsed);
+      return parsed;
     } catch {
       return null;
     }
@@ -111,17 +169,33 @@ class LocalSyncService {
 
   // MEMBERS OPERATIONS
   getMembers(squadId: string): SquadMember[] {
-    const raw = localStorage.getItem(this.getStorageKey('members', squadId));
-    if (!raw) return [];
+    if (this.memoryMembers.has(squadId)) {
+      return this.memoryMembers.get(squadId)!;
+    }
+
+    if (typeof window === 'undefined') return [];
     try {
-      return JSON.parse(raw);
+      const raw = localStorage.getItem(this.getStorageKey('members', squadId));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      this.memoryMembers.set(squadId, parsed);
+      return parsed;
     } catch {
       return [];
     }
   }
 
   saveMembers(squadId: string, members: SquadMember[]) {
-    localStorage.setItem(this.getStorageKey('members', squadId), JSON.stringify(members));
+    this.memoryMembers.set(squadId, members);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(this.getStorageKey('members', squadId), JSON.stringify(members));
+      } catch (err) {
+        console.warn('LocalStorage saveMembers error:', err);
+      }
+    }
+
     this.notifyMembersListeners(squadId, members);
     this.broadcast('MEMBERS_UPDATED', squadId, members);
   }
@@ -186,10 +260,17 @@ class LocalSyncService {
 
   // MESSAGES OPERATIONS
   getMessages(squadId: string): ChatMessage[] {
-    const raw = localStorage.getItem(this.getStorageKey('messages', squadId));
-    if (!raw) return [];
+    if (this.memoryMessages.has(squadId)) {
+      return this.memoryMessages.get(squadId)!;
+    }
+
+    if (typeof window === 'undefined') return [];
     try {
-      return JSON.parse(raw);
+      const raw = localStorage.getItem(this.getStorageKey('messages', squadId));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      this.memoryMessages.set(squadId, parsed);
+      return parsed;
     } catch {
       return [];
     }
@@ -198,7 +279,16 @@ class LocalSyncService {
   sendMessage(squadId: string, message: ChatMessage) {
     const messages = this.getMessages(squadId);
     messages.push(message);
-    localStorage.setItem(this.getStorageKey('messages', squadId), JSON.stringify(messages));
+    this.memoryMessages.set(squadId, messages);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(this.getStorageKey('messages', squadId), JSON.stringify(messages));
+      } catch (err) {
+        console.warn('LocalStorage sendMessage error:', err);
+      }
+    }
+
     this.notifyMessagesListeners(squadId, messages);
     this.broadcast('MESSAGES_UPDATED', squadId, messages);
   }
@@ -225,10 +315,17 @@ class LocalSyncService {
 
   // SUGGESTIONS OPERATIONS
   getSuggestions(squadId: string): PlaceSuggestion[] {
-    const raw = localStorage.getItem(this.getStorageKey('suggestions', squadId));
-    if (!raw) return [];
+    if (this.memorySuggestions.has(squadId)) {
+      return this.memorySuggestions.get(squadId)!;
+    }
+
+    if (typeof window === 'undefined') return [];
     try {
-      return JSON.parse(raw);
+      const raw = localStorage.getItem(this.getStorageKey('suggestions', squadId));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      this.memorySuggestions.set(squadId, parsed);
+      return parsed;
     } catch {
       return [];
     }
@@ -242,7 +339,16 @@ class LocalSyncService {
     } else {
       suggestions.push(suggestion);
     }
-    localStorage.setItem(this.getStorageKey('suggestions', squadId), JSON.stringify(suggestions));
+    this.memorySuggestions.set(squadId, suggestions);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(this.getStorageKey('suggestions', squadId), JSON.stringify(suggestions));
+      } catch (err) {
+        console.warn('LocalStorage saveSuggestion error:', err);
+      }
+    }
+
     this.notifySuggestionsListeners(squadId, suggestions);
     this.broadcast('SUGGESTIONS_UPDATED', squadId, suggestions);
   }
