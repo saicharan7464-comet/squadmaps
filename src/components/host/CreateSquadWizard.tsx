@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LatLng, Route, VehicleMode } from '../../types/navigation';
 import { Place } from '../../types/places';
 import { PlaceSearchBox } from '../places/PlaceSearchBox';
@@ -34,11 +34,12 @@ interface CreateSquadWizardProps {
   onCreateSquad: (
     squadName: string,
     destination: string,
-    destinationCoords: LatLng,
-    mode: VehicleMode,
+    destinationCoordinates: LatLng,
+    vehicleMode: VehicleMode,
     selectedRoute: Route,
     hostName?: string
   ) => Promise<string>;
+  onStartNavigation?: () => void;
 }
 
 const VEHICLE_MODES: { id: VehicleMode; label: string; icon: any; desc: string }[] = [
@@ -53,7 +54,8 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
   isOpen,
   onClose,
   userLocation,
-  onCreateSquad
+  onCreateSquad,
+  onStartNavigation
 }) => {
   const { user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
@@ -66,19 +68,33 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [createdSquadId, setCreatedSquadId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Synchronize hostName with user profile and reset wizard state when opened
+  const prevIsOpenRef = useRef(false);
+
+  // Synchronize hostName with user profile and reset wizard state ONLY when the modal transitions from closed to open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       setStep(1);
       setSelectedPlace(null);
       setCreatedSquadId(null);
       setSquadName('');
+      setIsSubmitting(false);
+      setSubmitError(null);
       if (user?.name) {
         setHostName(user.name);
       }
     }
-  }, [isOpen, user?.name]);
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  // Synchronize hostName if user profile arrives later and hostName was not yet filled
+  useEffect(() => {
+    if (user?.name && !hostName && step === 1) {
+      setHostName(user.name);
+    }
+  }, [user?.name, hostName, step]);
 
   if (!isOpen) return null;
 
@@ -100,15 +116,60 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
     const origin: LatLng = userLocation || { lat: 17.385, lng: 78.4867 }; // Default origin if GPS not yet granted
     try {
-      const calculatedRoutes = await routingProvider.calculateRoutes(
+      let calculatedRoutes = await routingProvider.calculateRoutes(
         origin,
         selectedPlace.coordinates,
         mode
       );
+
+      if (!calculatedRoutes || calculatedRoutes.length === 0) {
+        const dist = Math.round(
+          Math.hypot(selectedPlace.coordinates.lat - origin.lat, selectedPlace.coordinates.lng - origin.lng) * 111000
+        );
+        calculatedRoutes = [
+          {
+            id: `route-fallback-${Date.now()}`,
+            name: `Direct Route to ${selectedPlace.name}`,
+            distance: dist,
+            duration: Math.round(dist / 11),
+            summary: 'Direct Path',
+            polyline: [origin, selectedPlace.coordinates],
+            steps: [],
+            bounds: {
+              north: Math.max(origin.lat, selectedPlace.coordinates.lat),
+              south: Math.min(origin.lat, selectedPlace.coordinates.lat),
+              east: Math.max(origin.lng, selectedPlace.coordinates.lng),
+              west: Math.min(origin.lng, selectedPlace.coordinates.lng)
+            }
+          }
+        ];
+      }
+
       setRoutes(calculatedRoutes);
       setSelectedRouteIndex(0);
     } catch (err) {
-      console.warn('Failed to calculate routes:', err);
+      console.warn('Failed to calculate routes, using fallback direct route:', err);
+      const dist = Math.round(
+        Math.hypot(selectedPlace.coordinates.lat - origin.lat, selectedPlace.coordinates.lng - origin.lng) * 111000
+      );
+      setRoutes([
+        {
+          id: `route-fallback-${Date.now()}`,
+          name: `Direct Route to ${selectedPlace.name}`,
+          distance: dist,
+          duration: Math.round(dist / 11),
+          summary: 'Direct Path',
+          polyline: [origin, selectedPlace.coordinates],
+          steps: [],
+          bounds: {
+            north: Math.max(origin.lat, selectedPlace.coordinates.lat),
+            south: Math.min(origin.lat, selectedPlace.coordinates.lat),
+            east: Math.max(origin.lng, selectedPlace.coordinates.lng),
+            west: Math.min(origin.lng, selectedPlace.coordinates.lng)
+          }
+        }
+      ]);
+      setSelectedRouteIndex(0);
     } finally {
       setIsLoadingRoutes(false);
       setStep(4);
@@ -117,22 +178,33 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
   // Step 4: Finalize Squad Creation
   const handleFinalizeSquad = async () => {
-    if (!selectedPlace || routes.length === 0) return;
-    const chosenRoute = routes[selectedRouteIndex];
+    if (!selectedPlace || routes.length === 0 || isSubmitting) return;
+    const chosenRoute = routes[selectedRouteIndex] || routes[0];
 
     const finalName = squadName.trim() || `Trip to ${selectedPlace.name}`;
     const finalHostName = hostName.trim() || user?.name || 'Squad Leader';
-    const squadId = await onCreateSquad(
-      finalName,
-      selectedPlace.name,
-      selectedPlace.coordinates,
-      vehicleMode,
-      chosenRoute,
-      finalHostName
-    );
 
-    setCreatedSquadId(squadId);
-    setStep(5);
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const squadId = await onCreateSquad(
+        finalName,
+        selectedPlace.name,
+        selectedPlace.coordinates,
+        vehicleMode,
+        chosenRoute,
+        finalHostName
+      );
+
+      setCreatedSquadId(squadId);
+      setStep(5);
+    } catch (err: any) {
+      console.error('Failed to create squad in step 4:', err);
+      setSubmitError(err?.message || 'Failed to create squad. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inviteUrl = createdSquadId ? getInviteUrl(createdSquadId) : '';
@@ -626,12 +698,70 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
               })}
             </div>
 
+            {submitError && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  backgroundColor: 'rgba(255, 61, 113, 0.15)',
+                  border: '1px solid var(--accent-red)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: '#FF3D71',
+                  fontSize: '13px',
+                  marginBottom: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>⚠️ {submitError}</span>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setStep(2)} className="btn-secondary" style={{ flex: 1 }}>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => setStep(2)}
+                className="btn-secondary"
+                style={{ flex: 1, opacity: isSubmitting ? 0.6 : 1 }}
+              >
                 <ArrowLeft size={16} /> Back
               </button>
-              <button onClick={handleFinalizeSquad} className="btn-primary" style={{ flex: 2 }}>
-                <Sparkles size={18} /> Create Squad
+              <button
+                type="button"
+                disabled={isSubmitting || routes.length === 0}
+                onClick={handleFinalizeSquad}
+                className="btn-primary"
+                style={{
+                  flex: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  opacity: isSubmitting || routes.length === 0 ? 0.7 : 1,
+                  cursor: isSubmitting || routes.length === 0 ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        border: '2px solid #000',
+                        borderTopColor: 'transparent',
+                        animation: 'radarSweep 0.8s linear infinite'
+                      }}
+                    />
+                    <span>Creating Squad...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={18} />
+                    <span>Create Squad</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -704,7 +834,11 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
             </div>
 
             <button
-              onClick={onClose}
+              type="button"
+              onClick={() => {
+                onClose();
+                onStartNavigation?.();
+              }}
               className="btn-primary"
               style={{ width: '100%', padding: '14px', fontSize: '15px' }}
             >

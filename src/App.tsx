@@ -676,6 +676,7 @@ const NavigationCockpit: React.FC<{
         onClose={() => setIsCreateSquadOpen(false)}
         userLocation={location.coordinates}
         onCreateSquad={createSquad}
+        onStartNavigation={handleStartNavigation}
       />
 
       {/* SQUAD CHAT DRAWER */}
