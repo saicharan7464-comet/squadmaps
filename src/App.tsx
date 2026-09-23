@@ -728,19 +728,13 @@ export default function App() {
   const [targetSquadId, setTargetSquadId] = useState<string | null>(null);
   const [openCreateOnCockpit, setOpenCreateOnCockpit] = useState(false);
 
-  // Check URL on load for invite links (/join/SQ-XXXX, ?join=SQ-XXXX, #join=SQ-XXXX)
+  // Check URL on load for invite links (?join=SQ-1234, /join/SQ-1234, #join=SQ-1234)
   useEffect(() => {
-    const handleUrlChange = () => {
-      const detected = parseSquadId(window.location.href);
-      if (detected) {
-        setTargetSquadId(detected);
-        setCurrentView('join');
-      }
-    };
-
-    handleUrlChange();
-    window.addEventListener('popstate', handleUrlChange);
-    return () => window.removeEventListener('popstate', handleUrlChange);
+    const detected = parseSquadId(window.location.href);
+    if (detected) {
+      setTargetSquadId(detected);
+      setCurrentView('join');
+    }
   }, []);
 
   const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
@@ -760,9 +754,6 @@ export default function App() {
   const handleJoinSquadId = (id: string) => {
     setTargetSquadId(id);
     setCurrentView('join');
-    if (typeof window !== 'undefined' && window.history.pushState) {
-      window.history.pushState({}, '', `/join/${encodeURIComponent(id)}`);
-    }
   };
 
   return (
@@ -786,9 +777,6 @@ export default function App() {
                 setCurrentView('map');
               }}
               onCancel={() => {
-                if (typeof window !== 'undefined' && window.history.replaceState) {
-                  window.history.replaceState({}, '', '/');
-                }
                 setCurrentView('home');
               }}
               onRequestLocation={async () => {

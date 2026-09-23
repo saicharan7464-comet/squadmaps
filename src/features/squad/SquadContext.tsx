@@ -226,52 +226,25 @@ export const SquadProvider: React.FC<{
     canonicalRoute: Route,
     hostCustomName?: string
   ): Promise<string> => {
-    let activeUser = user;
-    const effectiveHostName = hostCustomName?.trim() || user?.name || 'Squad Leader';
+    if (!user) throw new Error('User must be logged in to create a squad');
 
-    if (!activeUser) {
-      try {
-        const saved = typeof window !== 'undefined' ? localStorage.getItem('squadnav_user') : null;
-        if (saved) {
-          activeUser = JSON.parse(saved);
-        }
-      } catch {}
-      if (!activeUser) {
-        const id = `guest_${Math.random().toString(36).substring(2, 9)}`;
-        activeUser = {
-          id,
-          name: effectiveHostName,
-          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${id}`,
-          color: '#00F0FF',
-          isGuest: true,
-          createdAt: Date.now()
-        };
-        try {
-          localStorage.setItem('squadnav_user', JSON.stringify(activeUser));
-        } catch {}
-      }
-    }
-
-    if (hostCustomName?.trim() && hostCustomName.trim() !== activeUser.name) {
+    const effectiveHostName = hostCustomName?.trim() || user.name;
+    if (hostCustomName?.trim() && hostCustomName.trim() !== user.name) {
       updateProfileName(hostCustomName.trim());
-      activeUser = { ...activeUser, name: hostCustomName.trim() };
     }
 
-    // Generate unique public squad code (e.g. "SQ-W0K6")
-    const code = `SQ-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-    const squadId = code;
+    // Generate unique squad ID (e.g. "SQ-92A4")
+    const squadId = `SQ-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     const newSquad: Squad = {
       squadId,
-      code,
-      hostId: activeUser.id,
+      hostId: user.id,
       hostName: effectiveHostName,
       name,
       destination,
       destinationCoordinates,
       vehicleMode,
       createdAt: Date.now(),
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24h validity
       status: 'active',
       canonicalRoute,
       settings: {
@@ -283,20 +256,16 @@ export const SquadProvider: React.FC<{
       activeRegroupPoint: null
     };
 
-    try {
-      await squadDataService.saveSquad(newSquad);
-    } catch (saveErr) {
-      console.warn('[CREATE SQUAD] saveSquad warning:', saveErr);
-    }
+    await squadDataService.saveSquad(newSquad);
 
     // Add host as first squad member
     const hostMember: SquadMember = {
-      userId: activeUser.id,
+      userId: user.id,
       name: effectiveHostName,
-      profileImage: activeUser.avatar,
-      color: activeUser.color,
-      latitude: userCoords?.lat || canonicalRoute.polyline?.[0]?.lat || destinationCoordinates.lat,
-      longitude: userCoords?.lng || canonicalRoute.polyline?.[0]?.lng || destinationCoordinates.lng,
+      profileImage: user.avatar,
+      color: user.color,
+      latitude: userCoords?.lat || canonicalRoute.polyline[0]?.lat || 0,
+      longitude: userCoords?.lng || canonicalRoute.polyline[0]?.lng || 0,
       speed: 0,
       heading: 0,
       accuracy: 10,
@@ -310,14 +279,8 @@ export const SquadProvider: React.FC<{
       isHost: true
     };
 
-    try {
-      await squadDataService.updateMember(squadId, hostMember);
-    } catch (memberErr) {
-      console.warn('[CREATE SQUAD] updateMember warning:', memberErr);
-    }
-
+    await squadDataService.updateMember(squadId, hostMember);
     setSquad(newSquad);
-    setMembers([hostMember]);
     return squadId;
   };
 
@@ -327,53 +290,26 @@ export const SquadProvider: React.FC<{
     initialCoords?: LatLng,
     customUserName?: string
   ): Promise<boolean> => {
-    let activeUser = user;
-    const effectiveMemberName = customUserName?.trim() || user?.name || 'Squad Member';
+    if (!user) return false;
 
-    if (!activeUser) {
-      try {
-        const saved = typeof window !== 'undefined' ? localStorage.getItem('squadnav_user') : null;
-        if (saved) {
-          activeUser = JSON.parse(saved);
-        }
-      } catch {}
-      if (!activeUser) {
-        const id = `guest_${Math.random().toString(36).substring(2, 9)}`;
-        activeUser = {
-          id,
-          name: effectiveMemberName,
-          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${id}`,
-          color: '#00E676',
-          isGuest: true,
-          createdAt: Date.now()
-        };
-        try {
-          localStorage.setItem('squadnav_user', JSON.stringify(activeUser));
-        } catch {}
-      }
-    }
-
-    if (customUserName?.trim() && customUserName.trim() !== activeUser.name) {
+    const effectiveMemberName = customUserName?.trim() || user.name;
+    if (customUserName?.trim() && customUserName.trim() !== user.name) {
       updateProfileName(customUserName.trim());
-      activeUser = { ...activeUser, name: customUserName.trim() };
     }
 
-    const lookupResult = await squadDataService.findSquadByCode(squadId);
-    const existingSquad = lookupResult.squad;
-    if (!existingSquad || lookupResult.error || existingSquad.status === 'ended') {
-      console.warn('[JOIN SQUAD] Lookup failed in joinSquad:', lookupResult.error);
+    const existingSquad = await squadDataService.getSquad(squadId);
+    if (!existingSquad || existingSquad.status === 'ended') {
       return false;
     }
 
-    const targetSquadId = existingSquad.squadId || existingSquad.code;
-    const startLat = initialCoords?.lat || userCoords?.lat || existingSquad.canonicalRoute.polyline?.[0]?.lat || 0;
-    const startLng = initialCoords?.lng || userCoords?.lng || existingSquad.canonicalRoute.polyline?.[0]?.lng || 0;
+    const startLat = initialCoords?.lat || userCoords?.lat || existingSquad.canonicalRoute.polyline[0]?.lat || 0;
+    const startLng = initialCoords?.lng || userCoords?.lng || existingSquad.canonicalRoute.polyline[0]?.lng || 0;
 
     const member: SquadMember = {
-      userId: activeUser.id,
+      userId: user.id,
       name: effectiveMemberName,
-      profileImage: activeUser.avatar,
-      color: activeUser.color,
+      profileImage: user.avatar,
+      color: user.color,
       latitude: startLat,
       longitude: startLng,
 
@@ -387,23 +323,20 @@ export const SquadProvider: React.FC<{
       status: 'active',
       online: true,
       vehicleMode: existingSquad.vehicleMode,
-      isHost: existingSquad.hostId === activeUser.id
+      isHost: existingSquad.hostId === user.id
     };
 
-    await squadDataService.updateMember(targetSquadId, member);
+    await squadDataService.updateMember(squadId, member);
     setSquad(existingSquad);
 
-    const updatedMembers = await squadDataService.getMembers(targetSquadId);
-    setMembers(updatedMembers);
-
     // Send arrival/join announcement in chat
-    await squadDataService.sendMessage(targetSquadId, {
+    await squadDataService.sendMessage(squadId, {
       id: `msg-${Date.now()}`,
-      squadId: targetSquadId,
-      senderId: activeUser.id,
+      squadId,
+      senderId: user.id,
       senderName: effectiveMemberName,
-      senderAvatar: activeUser.avatar,
-      senderColor: activeUser.color,
+      senderAvatar: user.avatar,
+      senderColor: user.color,
       text: `${effectiveMemberName} joined the squad!`,
       type: 'alert',
       timestamp: Date.now()
