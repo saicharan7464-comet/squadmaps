@@ -19,196 +19,270 @@ const cleanForFirestore = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
 };
 
+const withTimeout = <T>(promise: Promise<T>, ms = 2000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms)
+    )
+  ]);
+};
+
 export class SquadDataService {
   // SQUAD
   async saveSquad(squad: Squad): Promise<void> {
+    // 1. Immediately persist locally so UI is never blocked
+    localSyncService.saveSquad(squad);
+
+    // 2. Sync to Firestore in background / with timeout
     if (isFirebaseConfigured() && db) {
       try {
-        await setDoc(doc(db, 'squads', squad.squadId), cleanForFirestore(squad));
+        await withTimeout(setDoc(doc(db, 'squads', squad.squadId), cleanForFirestore(squad)), 2000);
       } catch (err) {
-        console.warn('Firestore saveSquad error:', err);
+        console.warn('Firestore saveSquad error/timeout, operating in local sync mode:', err);
       }
     }
-    localSyncService.saveSquad(squad);
   }
-
 
   async getSquad(squadId: string): Promise<Squad | null> {
     if (isFirebaseConfigured() && db) {
       try {
-        const snap = await getDoc(doc(db, 'squads', squadId));
+        const snap = await withTimeout(getDoc(doc(db, 'squads', squadId)), 2000);
         if (snap.exists()) {
           return snap.data() as Squad;
         }
       } catch (err) {
-        console.warn('Firestore getSquad error:', err);
+        console.warn('Firestore getSquad error/timeout, falling back to local storage:', err);
       }
     }
     return localSyncService.getSquad(squadId);
   }
 
   subscribeToSquad(squadId: string, callback: (squad: Squad | null) => void): () => void {
+    const unsubLocal = localSyncService.subscribeToSquad(squadId, callback);
+    let unsubFirestore: (() => void) | null = null;
+
     if (isFirebaseConfigured() && db) {
       try {
-        const unsubscribe = onSnapshot(doc(db, 'squads', squadId), (snap) => {
-          if (snap.exists()) {
-            callback(snap.data() as Squad);
-          } else {
-            callback(null);
+        unsubFirestore = onSnapshot(
+          doc(db, 'squads', squadId),
+          (snap) => {
+            if (snap.exists()) {
+              callback(snap.data() as Squad);
+            }
+          },
+          (err) => {
+            console.warn('Firestore subscribeToSquad warning:', err);
           }
-        });
-        return unsubscribe;
+        );
       } catch (err) {
-        console.warn('Firestore subscribeToSquad error:', err);
+        console.warn('Firestore subscribeToSquad init error:', err);
       }
     }
-    return localSyncService.subscribeToSquad(squadId, callback);
+
+    return () => {
+      unsubLocal();
+      if (unsubFirestore) unsubFirestore();
+    };
   }
 
   // MEMBERS
   async getMembers(squadId: string): Promise<SquadMember[]> {
     if (isFirebaseConfigured() && db) {
       try {
-        const snapshot = await getDocs(collection(db, 'squads', squadId, 'members'));
+        const snapshot = await withTimeout(getDocs(collection(db, 'squads', squadId, 'members')), 2000);
         const members: SquadMember[] = [];
         snapshot.forEach((docSnap) => {
           members.push(docSnap.data() as SquadMember);
         });
-        return members;
+        if (members.length > 0) return members;
       } catch (err) {
-        console.warn('Firestore getMembers error:', err);
+        console.warn('Firestore getMembers error/timeout:', err);
       }
     }
     return localSyncService.getMembers(squadId);
   }
 
   async updateMember(squadId: string, member: SquadMember): Promise<void> {
+    localSyncService.updateMember(squadId, member);
+
     if (isFirebaseConfigured() && db) {
       try {
-        await setDoc(doc(db, 'squads', squadId, 'members', member.userId), cleanForFirestore(member));
+        await withTimeout(setDoc(doc(db, 'squads', squadId, 'members', member.userId), cleanForFirestore(member)), 2000);
       } catch (err) {
-        console.warn('Firestore updateMember error:', err);
+        // Silently warn to avoid console flood during GPS movement
       }
     }
-    localSyncService.updateMember(squadId, member);
   }
 
   async removeMember(squadId: string, userId: string): Promise<void> {
+    localSyncService.removeMember(squadId, userId);
+
     if (isFirebaseConfigured() && db) {
       try {
-        await deleteDoc(doc(db, 'squads', squadId, 'members', userId));
+        await withTimeout(deleteDoc(doc(db, 'squads', squadId, 'members', userId)), 2000);
       } catch (err) {
-        console.warn('Firestore removeMember error:', err);
+        console.warn('Firestore removeMember error/timeout:', err);
       }
     }
-    localSyncService.removeMember(squadId, userId);
   }
 
   subscribeToMembers(squadId: string, callback: (members: SquadMember[]) => void): () => void {
+    const unsubLocal = localSyncService.subscribeToMembers(squadId, callback);
+    let unsubFirestore: (() => void) | null = null;
+
     if (isFirebaseConfigured() && db) {
       try {
-        const unsubscribe = onSnapshot(collection(db, 'squads', squadId, 'members'), (snapshot) => {
-          const members: SquadMember[] = [];
-          snapshot.forEach((docSnap) => {
-            members.push(docSnap.data() as SquadMember);
-          });
-          callback(members);
-        });
-        return unsubscribe;
+        unsubFirestore = onSnapshot(
+          collection(db, 'squads', squadId, 'members'),
+          (snapshot) => {
+            const members: SquadMember[] = [];
+            snapshot.forEach((docSnap) => {
+              members.push(docSnap.data() as SquadMember);
+            });
+            if (members.length > 0) {
+              callback(members);
+            }
+          },
+          (err) => {
+            console.warn('Firestore subscribeToMembers warning:', err);
+          }
+        );
       } catch (err) {
-        console.warn('Firestore subscribeToMembers error:', err);
+        console.warn('Firestore subscribeToMembers init error:', err);
       }
     }
-    return localSyncService.subscribeToMembers(squadId, callback);
+
+    return () => {
+      unsubLocal();
+      if (unsubFirestore) unsubFirestore();
+    };
   }
 
   // MESSAGES
   async sendMessage(squadId: string, message: ChatMessage): Promise<void> {
+    localSyncService.sendMessage(squadId, message);
+
     if (isFirebaseConfigured() && db) {
       try {
-        await addDoc(collection(db, 'squads', squadId, 'messages'), cleanForFirestore(message));
+        await withTimeout(addDoc(collection(db, 'squads', squadId, 'messages'), cleanForFirestore(message)), 2000);
       } catch (err) {
-        console.warn('Firestore sendMessage error:', err);
+        console.warn('Firestore sendMessage error/timeout:', err);
       }
     }
-    localSyncService.sendMessage(squadId, message);
   }
 
   subscribeToMessages(squadId: string, callback: (messages: ChatMessage[]) => void): () => void {
+    const unsubLocal = localSyncService.subscribeToMessages(squadId, callback);
+    let unsubFirestore: (() => void) | null = null;
+
     if (isFirebaseConfigured() && db) {
       try {
-        const unsubscribe = onSnapshot(collection(db, 'squads', squadId, 'messages'), (snapshot) => {
-          const messages: ChatMessage[] = [];
-          snapshot.forEach((docSnap) => {
-            messages.push({ ...docSnap.data(), id: docSnap.id } as ChatMessage);
-          });
-          // Sort by timestamp
-          messages.sort((a, b) => a.timestamp - b.timestamp);
-          callback(messages);
-        });
-        return unsubscribe;
+        unsubFirestore = onSnapshot(
+          collection(db, 'squads', squadId, 'messages'),
+          (snapshot) => {
+            const messages: ChatMessage[] = [];
+            snapshot.forEach((docSnap) => {
+              messages.push({ ...docSnap.data(), id: docSnap.id } as ChatMessage);
+            });
+            messages.sort((a, b) => a.timestamp - b.timestamp);
+            if (messages.length > 0) {
+              callback(messages);
+            }
+          },
+          (err) => {
+            console.warn('Firestore subscribeToMessages warning:', err);
+          }
+        );
       } catch (err) {
-        console.warn('Firestore subscribeToMessages error:', err);
+        console.warn('Firestore subscribeToMessages init error:', err);
       }
     }
-    return localSyncService.subscribeToMessages(squadId, callback);
+
+    return () => {
+      unsubLocal();
+      if (unsubFirestore) unsubFirestore();
+    };
   }
 
   // SUGGESTIONS
   async saveSuggestion(squadId: string, suggestion: PlaceSuggestion): Promise<void> {
+    localSyncService.saveSuggestion(squadId, suggestion);
+
     if (isFirebaseConfigured() && db) {
       try {
-        await setDoc(doc(db, 'squads', squadId, 'suggestions', suggestion.id), cleanForFirestore(suggestion));
+        await withTimeout(setDoc(doc(db, 'squads', squadId, 'suggestions', suggestion.id), cleanForFirestore(suggestion)), 2000);
       } catch (err) {
-        console.warn('Firestore saveSuggestion error:', err);
+        console.warn('Firestore saveSuggestion error/timeout:', err);
       }
     }
-    localSyncService.saveSuggestion(squadId, suggestion);
   }
 
   async voteSuggestion(squadId: string, suggestionId: string, userId: string, vote: boolean): Promise<void> {
+    localSyncService.voteSuggestion(squadId, suggestionId, userId, vote);
+
     if (isFirebaseConfigured() && db) {
       try {
-        await updateDoc(doc(db, 'squads', squadId, 'suggestions', suggestionId), {
-          [`votes.${userId}`]: vote
-        });
+        await withTimeout(
+          updateDoc(doc(db, 'squads', squadId, 'suggestions', suggestionId), {
+            [`votes.${userId}`]: vote
+          }),
+          2000
+        );
       } catch (err) {
-        console.warn('Firestore voteSuggestion error:', err);
+        console.warn('Firestore voteSuggestion error/timeout:', err);
       }
     }
-    localSyncService.voteSuggestion(squadId, suggestionId, userId, vote);
   }
 
   subscribeToSuggestions(squadId: string, callback: (suggestions: PlaceSuggestion[]) => void): () => void {
+    const unsubLocal = localSyncService.subscribeToSuggestions(squadId, callback);
+    let unsubFirestore: (() => void) | null = null;
+
     if (isFirebaseConfigured() && db) {
       try {
-        const unsubscribe = onSnapshot(collection(db, 'squads', squadId, 'suggestions'), (snapshot) => {
-          const suggestions: PlaceSuggestion[] = [];
-          snapshot.forEach((docSnap) => {
-            suggestions.push({ ...docSnap.data(), id: docSnap.id } as PlaceSuggestion);
-          });
-          callback(suggestions);
-        });
-        return unsubscribe;
+        unsubFirestore = onSnapshot(
+          collection(db, 'squads', squadId, 'suggestions'),
+          (snapshot) => {
+            const suggestions: PlaceSuggestion[] = [];
+            snapshot.forEach((docSnap) => {
+              suggestions.push({ ...docSnap.data(), id: docSnap.id } as PlaceSuggestion);
+            });
+            if (suggestions.length > 0) {
+              callback(suggestions);
+            }
+          },
+          (err) => {
+            console.warn('Firestore subscribeToSuggestions warning:', err);
+          }
+        );
       } catch (err) {
-        console.warn('Firestore subscribeToSuggestions error:', err);
+        console.warn('Firestore subscribeToSuggestions init error:', err);
       }
     }
-    return localSyncService.subscribeToSuggestions(squadId, callback);
+
+    return () => {
+      unsubLocal();
+      if (unsubFirestore) unsubFirestore();
+    };
   }
 
   // REGROUP
   async setRegroupPoint(squadId: string, regroupPoint: RegroupPoint | null): Promise<void> {
+    localSyncService.setRegroupPoint(squadId, regroupPoint);
+
     if (isFirebaseConfigured() && db) {
       try {
-        await updateDoc(doc(db, 'squads', squadId), {
-          activeRegroupPoint: regroupPoint
-        });
+        await withTimeout(
+          updateDoc(doc(db, 'squads', squadId), {
+            activeRegroupPoint: regroupPoint
+          }),
+          2000
+        );
       } catch (err) {
-        console.warn('Firestore setRegroupPoint error:', err);
+        console.warn('Firestore setRegroupPoint error/timeout:', err);
       }
     }
-    localSyncService.setRegroupPoint(squadId, regroupPoint);
   }
 }
 
