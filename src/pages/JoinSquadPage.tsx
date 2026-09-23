@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Squad } from '../types/squad';
 import { LatLng } from '../types/navigation';
 import { squadDataService } from '../services/firebase/squadDataService';
-import { extractAndCacheSquadFromUrl } from '../utils/inviteUrl';
 import { formatDistance, formatDuration } from '../utils/format';
 import { useAuth } from '../features/auth/AuthContext';
 import { useSquad } from '../features/squad/SquadContext';
@@ -50,9 +49,6 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
     const fetchSquadDetails = async () => {
       setIsLoading(true);
       try {
-        if (typeof window !== 'undefined') {
-          extractAndCacheSquadFromUrl(window.location.href);
-        }
         const found = await squadDataService.getSquad(squadId);
         if (!found) {
           setError(`Squad #${squadId} was not found or has expired.`);
