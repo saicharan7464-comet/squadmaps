@@ -45,7 +45,7 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const inviteUrl = getInviteUrl(squad.squadId);
+  const inviteUrl = getInviteUrl(squad.code || squad.squadId);
 
   const handleRename = (e: React.FormEvent) => {
     e.preventDefault();

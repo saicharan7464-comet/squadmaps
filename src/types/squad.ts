@@ -49,6 +49,7 @@ export interface SquadSettings {
 
 export interface Squad {
   squadId: string;
+  code: string; // Public squad code, e.g. "SQ-W0K6"
   hostId: string;
   hostName: string;
   name: string;
@@ -56,10 +57,12 @@ export interface Squad {
   destinationCoordinates: LatLng;
   vehicleMode: VehicleMode;
   createdAt: number;
+  expiresAt?: number; // Expiration timestamp in ms
   status: 'active' | 'ended';
   canonicalRoute: Route;
   settings: SquadSettings;
   activeRegroupPoint?: RegroupPoint | null;
+  members?: SquadMember[];
 }
 
 export interface SquadProgress {

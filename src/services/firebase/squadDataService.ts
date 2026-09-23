@@ -4,78 +4,243 @@ import { Squad, SquadMember, RegroupPoint } from '../../types/squad';
 import { ChatMessage } from '../../types/chat';
 import { PlaceSuggestion } from '../../types/places';
 import { optimizeSquadForStorage } from '../../utils/routeOptimizer';
+import { normalizeSquadCode } from '../../utils/inviteUrl';
+import { haversineDistance } from '../../utils/geo';
 import {
   doc,
   setDoc,
   getDoc,
   getDocs,
   collection,
+  query,
+  where,
   onSnapshot,
   updateDoc,
   deleteDoc,
-  addDoc
+  addDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 
 const cleanForFirestore = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
 };
 
-const withTimeout = <T>(promise: Promise<T>, ms = 3500): Promise<T | void> => {
-  return Promise.race([
-    promise,
-    new Promise<void>((resolve) => setTimeout(resolve, ms))
-  ]);
-};
+export interface FindSquadResult {
+  squad: Squad | null;
+  error?: string;
+  errorCode?: 'NOT_FOUND' | 'EXPIRED' | 'ENDED' | 'PERMISSION_DENIED' | 'NETWORK_ERROR' | 'INVALID_CODE';
+  technicalError?: string;
+}
 
 export class SquadDataService {
-  // SQUAD
-  async saveSquad(squad: Squad): Promise<void> {
-    const optimized = optimizeSquadForStorage(squad);
+  // Throttle map for member location writes to Firestore: userId -> { timestamp, lat, lng, status }
+  private lastMemberFirestoreWrite: Map<string, { timestamp: number; lat: number; lng: number; status: string }> = new Map();
 
-    // 1. Immediately update local storage & broadcast channel so the user is never blocked
+  // ==========================================
+  // SQUAD OPERATIONS
+  // ==========================================
+
+  /**
+   * Persists a squad document to Firestore and local sync.
+   * Ensures the public squad code is stored in the document as `code`.
+   */
+  async saveSquad(squad: Squad): Promise<void> {
+    const code = normalizeSquadCode(squad.code || squad.squadId);
+    const optimized = optimizeSquadForStorage({
+      ...squad,
+      code,
+      squadId: squad.squadId || code
+    });
+
+    // 1. Immediately cache in local sync for instant reactivity
     localSyncService.saveSquad(optimized);
 
-    // 2. Persist to Firestore with a safety timeout so network hangs never freeze the app
+    // 2. Persist to Firestore as the source of truth
     if (isFirebaseConfigured() && db) {
+      console.log(`[CREATE SQUAD]\nGenerated code: ${code}\nFirestore document ID: ${squad.squadId}\nWriting to Firestore...`);
       try {
-        await withTimeout(
-          setDoc(doc(db, 'squads', squad.squadId), cleanForFirestore(optimized)),
-          3500
-        );
-      } catch (err) {
-        console.warn('Firestore saveSquad error:', err);
+        const firestoreData = {
+          ...cleanForFirestore(optimized),
+          code,
+          squadId: squad.squadId || code,
+          createdAt: serverTimestamp(),
+          createdAtMs: squad.createdAt || Date.now(),
+          expiresAt: squad.expiresAt || (Date.now() + 24 * 60 * 60 * 1000)
+        };
+
+        await setDoc(doc(db, 'squads', squad.squadId), firestoreData);
+        console.log(`[CREATE SQUAD]\nGenerated code: ${code}\nFirestore document ID: ${squad.squadId}\nFirestore write successful: true`);
+      } catch (err: any) {
+        console.error(`[CREATE SQUAD]\nGenerated code: ${code}\nFirestore document ID: ${squad.squadId}\nFirestore write successful: false\nError:`, err);
+        throw err;
       }
     }
   }
 
-  async getSquad(squadId: string): Promise<Squad | null> {
-    // Check local sync first for fast cache
-    const local = localSyncService.getSquad(squadId);
-    if (local) return local;
+  /**
+   * Universal squad lookup by code, URL, or raw string.
+   * Used for QR code scanning, direct URL visits, and manual code input.
+   */
+  async findSquadByCode(rawInput: string): Promise<FindSquadResult> {
+    const rawUrl = rawInput || '';
+    const normalizedCode = normalizeSquadCode(rawInput);
 
+    console.log(`[JOIN SQUAD]\nRaw URL: ${rawUrl}\nExtracted code: ${normalizedCode}\nNormalized code: ${normalizedCode}`);
+
+    if (!normalizedCode || !/^SQ-[A-Za-z0-9_-]+$/.test(normalizedCode)) {
+      console.warn(`[JOIN SQUAD] Invalid code format: "${rawInput}" normalized to "${normalizedCode}"`);
+      return {
+        squad: null,
+        error: 'Invalid squad code format. Please check the code or invite link.',
+        errorCode: 'INVALID_CODE'
+      };
+    }
+
+    let foundSquad: Squad | null = null;
+    let queryResultCount = 0;
+    const queryDesc = `where("code", "==", "${normalizedCode}")`;
+
+    // 1. Query Firestore
     if (isFirebaseConfigured() && db) {
       try {
-        const snap = await withTimeout(getDoc(doc(db, 'squads', squadId)), 3500);
-        if (snap && snap.exists()) {
-          const squad = snap.data() as Squad;
-          localSyncService.saveSquad(squad);
-          return squad;
+        console.log(`[JOIN SQUAD]\nFirestore query: ${queryDesc}`);
+        const squadQuery = query(collection(db, 'squads'), where('code', '==', normalizedCode));
+        const snap = await getDocs(squadQuery);
+        queryResultCount = snap.size;
+        console.log(`[JOIN SQUAD]\nQuery result count: ${queryResultCount}`);
+
+        if (!snap.empty) {
+          const docSnap = snap.docs[0];
+          const data = docSnap.data();
+          foundSquad = {
+            ...data,
+            squadId: data.squadId || docSnap.id,
+            code: data.code || normalizedCode
+          } as Squad;
+        } else {
+          // Fallback check: check document ID directly for legacy squads created before the `code` field
+          const directDocSnap = await getDoc(doc(db, 'squads', normalizedCode));
+          if (directDocSnap.exists()) {
+            const data = directDocSnap.data();
+            queryResultCount = 1;
+            console.log(`[JOIN SQUAD] Found squad by document ID fallback: ${normalizedCode}`);
+            foundSquad = {
+              ...data,
+              squadId: data.squadId || directDocSnap.id,
+              code: data.code || normalizedCode
+            } as Squad;
+          }
         }
-      } catch (err) {
-        console.warn('Firestore getSquad error:', err);
+      } catch (err: any) {
+        console.error('[JOIN SQUAD] Firestore query error:', err);
+        const isPerm = err?.code === 'permission-denied';
+        const isQuota = err?.code === 'resource-exhausted';
+        const isNetwork = err?.code === 'unavailable' || err?.message?.includes('network');
+
+        return {
+          squad: null,
+          error: isPerm
+            ? 'Access denied by Firestore security rules. Unable to read squad.'
+            : isQuota
+            ? 'Firebase database daily quota has been exceeded. Please try again later.'
+            : 'Unable to connect to Firebase. Please check your network connection.',
+          errorCode: isPerm ? 'PERMISSION_DENIED' : isQuota ? 'NETWORK_ERROR' : 'NETWORK_ERROR',
+          technicalError: err?.message || String(err)
+        };
       }
     }
-    return null;
+
+    // 2. Offline / Demo fallback
+    if (!foundSquad) {
+      const local = localSyncService.getSquad(normalizedCode);
+      if (local) {
+        console.log('[JOIN SQUAD] Located squad in local sync storage');
+        foundSquad = local;
+      }
+    }
+
+    // 3. Not Found verification
+    if (!foundSquad) {
+      console.log(`[JOIN SQUAD]\nSquad found: false`);
+      return {
+        squad: null,
+        error: `Squad #${normalizedCode} was not found. Please verify the code with your squad host.`,
+        errorCode: 'NOT_FOUND'
+      };
+    }
+
+    console.log(`[JOIN SQUAD]\nSquad found: true\nSquad status: ${foundSquad.status}`);
+
+    // 4. Status verification
+    if (foundSquad.status === 'ended') {
+      return {
+        squad: foundSquad,
+        error: 'This squad session has already ended.',
+        errorCode: 'ENDED'
+      };
+    }
+
+    // 5. Expiration verification
+    // CRITICAL: Do NOT mark as expired if expiresAt is missing, pending, or 0
+    let isExpired = false;
+    let expiryStr = 'No expiry configured (Active)';
+    if (foundSquad.expiresAt !== undefined && foundSquad.expiresAt !== null) {
+      let expiresAtMs: number | null = null;
+      if (typeof foundSquad.expiresAt === 'number') {
+        expiresAtMs = foundSquad.expiresAt;
+      } else if (typeof (foundSquad.expiresAt as any)?.toMillis === 'function') {
+        expiresAtMs = (foundSquad.expiresAt as any).toMillis();
+      } else if (typeof (foundSquad.expiresAt as any)?.seconds === 'number') {
+        expiresAtMs = (foundSquad.expiresAt as any).seconds * 1000;
+      }
+
+      if (expiresAtMs && !isNaN(expiresAtMs) && expiresAtMs > 0) {
+        expiryStr = new Date(expiresAtMs).toISOString();
+        if (Date.now() > expiresAtMs) {
+          isExpired = true;
+        }
+      }
+    }
+
+    console.log(`[JOIN SQUAD]\nExpiry: ${expiryStr}\nExpired: ${isExpired}`);
+
+    if (isExpired) {
+      return {
+        squad: foundSquad,
+        error: `Squad #${normalizedCode} has expired. Please ask the host for a new squad invitation.`,
+        errorCode: 'EXPIRED'
+      };
+    }
+
+    // Cache in local sync for rapid retrieval
+    localSyncService.saveSquad(foundSquad);
+    console.log(`[JOIN SQUAD]\nJoin successful: true`);
+
+    return { squad: foundSquad };
+  }
+
+  /**
+   * Retrieves a squad by ID or code.
+   */
+  async getSquad(squadId: string): Promise<Squad | null> {
+    const result = await this.findSquadByCode(squadId);
+    return result.squad;
   }
 
   subscribeToSquad(squadId: string, callback: (squad: Squad | null) => void): () => void {
+    const normalized = normalizeSquadCode(squadId);
     let unsubFirestore: (() => void) | null = null;
+
     if (isFirebaseConfigured() && db) {
       try {
-        unsubFirestore = onSnapshot(doc(db, 'squads', squadId), (snap) => {
+        unsubFirestore = onSnapshot(doc(db, 'squads', normalized), (snap) => {
           if (snap.exists()) {
             const data = snap.data() as Squad;
-            callback(data);
+            callback({
+              ...data,
+              squadId: data.squadId || snap.id,
+              code: data.code || normalized
+            });
           }
         }, (err) => {
           console.warn('Firestore subscribeToSquad error:', err);
@@ -85,7 +250,7 @@ export class SquadDataService {
       }
     }
 
-    const unsubLocal = localSyncService.subscribeToSquad(squadId, callback);
+    const unsubLocal = localSyncService.subscribeToSquad(normalized, callback);
 
     return () => {
       if (unsubFirestore) unsubFirestore();
@@ -93,21 +258,25 @@ export class SquadDataService {
     };
   }
 
-  // MEMBERS
+  // ==========================================
+  // MEMBERS OPERATIONS
+  // ==========================================
+
   async getMembers(squadId: string): Promise<SquadMember[]> {
-    const local = localSyncService.getMembers(squadId);
+    const normalized = normalizeSquadCode(squadId);
+    const local = localSyncService.getMembers(normalized);
     if (local && local.length > 0) return local;
 
     if (isFirebaseConfigured() && db) {
       try {
-        const snapshot = await withTimeout(getDocs(collection(db, 'squads', squadId, 'members')), 3500);
-        if (snapshot) {
+        const snapshot = await getDocs(collection(db, 'squads', normalized, 'members'));
+        if (snapshot && !snapshot.empty) {
           const members: SquadMember[] = [];
           snapshot.forEach((docSnap) => {
             members.push(docSnap.data() as SquadMember);
           });
           if (members.length > 0) {
-            localSyncService.saveMembers(squadId, members);
+            localSyncService.saveMembers(normalized, members);
             return members;
           }
         }
@@ -118,27 +287,57 @@ export class SquadDataService {
     return local || [];
   }
 
+  /**
+   * Updates a squad member in local sync and Firestore.
+   * Throttles Firestore coordinate writes (max 1 per 5s) to prevent exhausting database quota,
+   * while always applying status changes and host registrations immediately.
+   */
   async updateMember(squadId: string, member: SquadMember): Promise<void> {
-    localSyncService.updateMember(squadId, member);
+    const normalized = normalizeSquadCode(squadId);
+    localSyncService.updateMember(normalized, member);
 
     if (isFirebaseConfigured() && db) {
-      try {
-        await withTimeout(
-          setDoc(doc(db, 'squads', squadId, 'members', member.userId), cleanForFirestore(member)),
-          3500
-        );
-      } catch (err) {
-        console.warn('Firestore updateMember error:', err);
+      const now = Date.now();
+      const lastWrite = this.lastMemberFirestoreWrite.get(member.userId);
+
+      const isStatusChange = !lastWrite || lastWrite.status !== member.status;
+      const isTimeElapsed = !lastWrite || (now - lastWrite.timestamp > 5000);
+      const isMovedSignificantly = !lastWrite || (
+        haversineDistance(
+          { lat: lastWrite.lat, lng: lastWrite.lng },
+          { lat: member.latitude, lng: member.longitude }
+        ) > 20
+      );
+
+      // Write to Firestore if status changed, or if sufficient time elapsed and member moved
+      if (isStatusChange || (isTimeElapsed && isMovedSignificantly)) {
+        this.lastMemberFirestoreWrite.set(member.userId, {
+          timestamp: now,
+          lat: member.latitude,
+          lng: member.longitude,
+          status: member.status
+        });
+
+        try {
+          await setDoc(
+            doc(db, 'squads', normalized, 'members', member.userId),
+            cleanForFirestore(member)
+          );
+        } catch (err) {
+          console.warn('Firestore updateMember error:', err);
+        }
       }
     }
   }
 
   async removeMember(squadId: string, userId: string): Promise<void> {
-    localSyncService.removeMember(squadId, userId);
+    const normalized = normalizeSquadCode(squadId);
+    localSyncService.removeMember(normalized, userId);
+    this.lastMemberFirestoreWrite.delete(userId);
 
     if (isFirebaseConfigured() && db) {
       try {
-        await withTimeout(deleteDoc(doc(db, 'squads', squadId, 'members', userId)), 3500);
+        await deleteDoc(doc(db, 'squads', normalized, 'members', userId));
       } catch (err) {
         console.warn('Firestore removeMember error:', err);
       }
@@ -146,10 +345,12 @@ export class SquadDataService {
   }
 
   subscribeToMembers(squadId: string, callback: (members: SquadMember[]) => void): () => void {
+    const normalized = normalizeSquadCode(squadId);
     let unsubFirestore: (() => void) | null = null;
+
     if (isFirebaseConfigured() && db) {
       try {
-        unsubFirestore = onSnapshot(collection(db, 'squads', squadId, 'members'), (snapshot) => {
+        unsubFirestore = onSnapshot(collection(db, 'squads', normalized, 'members'), (snapshot) => {
           const members: SquadMember[] = [];
           snapshot.forEach((docSnap) => {
             members.push(docSnap.data() as SquadMember);
@@ -163,7 +364,7 @@ export class SquadDataService {
       }
     }
 
-    const unsubLocal = localSyncService.subscribeToMembers(squadId, callback);
+    const unsubLocal = localSyncService.subscribeToMembers(normalized, callback);
 
     return () => {
       if (unsubFirestore) unsubFirestore();
@@ -171,16 +372,17 @@ export class SquadDataService {
     };
   }
 
-  // MESSAGES
+  // ==========================================
+  // MESSAGES OPERATIONS
+  // ==========================================
+
   async sendMessage(squadId: string, message: ChatMessage): Promise<void> {
-    localSyncService.sendMessage(squadId, message);
+    const normalized = normalizeSquadCode(squadId);
+    localSyncService.sendMessage(normalized, message);
 
     if (isFirebaseConfigured() && db) {
       try {
-        await withTimeout(
-          addDoc(collection(db, 'squads', squadId, 'messages'), cleanForFirestore(message)),
-          3500
-        );
+        await addDoc(collection(db, 'squads', normalized, 'messages'), cleanForFirestore(message));
       } catch (err) {
         console.warn('Firestore sendMessage error:', err);
       }
@@ -188,10 +390,12 @@ export class SquadDataService {
   }
 
   subscribeToMessages(squadId: string, callback: (messages: ChatMessage[]) => void): () => void {
+    const normalized = normalizeSquadCode(squadId);
     let unsubFirestore: (() => void) | null = null;
+
     if (isFirebaseConfigured() && db) {
       try {
-        unsubFirestore = onSnapshot(collection(db, 'squads', squadId, 'messages'), (snapshot) => {
+        unsubFirestore = onSnapshot(collection(db, 'squads', normalized, 'messages'), (snapshot) => {
           const messages: ChatMessage[] = [];
           snapshot.forEach((docSnap) => {
             messages.push({ ...docSnap.data(), id: docSnap.id } as ChatMessage);
@@ -206,7 +410,7 @@ export class SquadDataService {
       }
     }
 
-    const unsubLocal = localSyncService.subscribeToMessages(squadId, callback);
+    const unsubLocal = localSyncService.subscribeToMessages(normalized, callback);
 
     return () => {
       if (unsubFirestore) unsubFirestore();
@@ -214,16 +418,17 @@ export class SquadDataService {
     };
   }
 
-  // SUGGESTIONS
+  // ==========================================
+  // SUGGESTIONS OPERATIONS
+  // ==========================================
+
   async saveSuggestion(squadId: string, suggestion: PlaceSuggestion): Promise<void> {
-    localSyncService.saveSuggestion(squadId, suggestion);
+    const normalized = normalizeSquadCode(squadId);
+    localSyncService.saveSuggestion(normalized, suggestion);
 
     if (isFirebaseConfigured() && db) {
       try {
-        await withTimeout(
-          setDoc(doc(db, 'squads', squadId, 'suggestions', suggestion.id), cleanForFirestore(suggestion)),
-          3500
-        );
+        await setDoc(doc(db, 'squads', normalized, 'suggestions', suggestion.id), cleanForFirestore(suggestion));
       } catch (err) {
         console.warn('Firestore saveSuggestion error:', err);
       }
@@ -231,16 +436,14 @@ export class SquadDataService {
   }
 
   async voteSuggestion(squadId: string, suggestionId: string, userId: string, vote: boolean): Promise<void> {
-    localSyncService.voteSuggestion(squadId, suggestionId, userId, vote);
+    const normalized = normalizeSquadCode(squadId);
+    localSyncService.voteSuggestion(normalized, suggestionId, userId, vote);
 
     if (isFirebaseConfigured() && db) {
       try {
-        await withTimeout(
-          updateDoc(doc(db, 'squads', squadId, 'suggestions', suggestionId), {
-            [`votes.${userId}`]: vote
-          }),
-          3500
-        );
+        await updateDoc(doc(db, 'squads', normalized, 'suggestions', suggestionId), {
+          [`votes.${userId}`]: vote
+        });
       } catch (err) {
         console.warn('Firestore voteSuggestion error:', err);
       }
@@ -248,10 +451,12 @@ export class SquadDataService {
   }
 
   subscribeToSuggestions(squadId: string, callback: (suggestions: PlaceSuggestion[]) => void): () => void {
+    const normalized = normalizeSquadCode(squadId);
     let unsubFirestore: (() => void) | null = null;
+
     if (isFirebaseConfigured() && db) {
       try {
-        unsubFirestore = onSnapshot(collection(db, 'squads', squadId, 'suggestions'), (snapshot) => {
+        unsubFirestore = onSnapshot(collection(db, 'squads', normalized, 'suggestions'), (snapshot) => {
           const suggestions: PlaceSuggestion[] = [];
           snapshot.forEach((docSnap) => {
             suggestions.push({ ...docSnap.data(), id: docSnap.id } as PlaceSuggestion);
@@ -265,7 +470,7 @@ export class SquadDataService {
       }
     }
 
-    const unsubLocal = localSyncService.subscribeToSuggestions(squadId, callback);
+    const unsubLocal = localSyncService.subscribeToSuggestions(normalized, callback);
 
     return () => {
       if (unsubFirestore) unsubFirestore();
@@ -273,18 +478,19 @@ export class SquadDataService {
     };
   }
 
-  // REGROUP
+  // ==========================================
+  // REGROUP OPERATIONS
+  // ==========================================
+
   async setRegroupPoint(squadId: string, regroupPoint: RegroupPoint | null): Promise<void> {
-    localSyncService.setRegroupPoint(squadId, regroupPoint);
+    const normalized = normalizeSquadCode(squadId);
+    localSyncService.setRegroupPoint(normalized, regroupPoint);
 
     if (isFirebaseConfigured() && db) {
       try {
-        await withTimeout(
-          updateDoc(doc(db, 'squads', squadId), {
-            activeRegroupPoint: regroupPoint
-          }),
-          3500
-        );
+        await updateDoc(doc(db, 'squads', normalized), {
+          activeRegroupPoint: regroupPoint
+        });
       } catch (err) {
         console.warn('Firestore setRegroupPoint error:', err);
       }

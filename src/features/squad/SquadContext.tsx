@@ -257,11 +257,13 @@ export const SquadProvider: React.FC<{
       activeUser = { ...activeUser, name: hostCustomName.trim() };
     }
 
-    // Generate unique squad ID (e.g. "SQ-92A4")
-    const squadId = `SQ-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    // Generate unique public squad code (e.g. "SQ-W0K6")
+    const code = `SQ-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const squadId = code;
 
     const newSquad: Squad = {
       squadId,
+      code,
       hostId: activeUser.id,
       hostName: effectiveHostName,
       name,
@@ -269,6 +271,7 @@ export const SquadProvider: React.FC<{
       destinationCoordinates,
       vehicleMode,
       createdAt: Date.now(),
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24h validity
       status: 'active',
       canonicalRoute,
       settings: {
@@ -305,6 +308,7 @@ export const SquadProvider: React.FC<{
 
     await squadDataService.updateMember(squadId, hostMember);
     setSquad(newSquad);
+    setMembers([hostMember]);
     return squadId;
   };
 
@@ -345,11 +349,14 @@ export const SquadProvider: React.FC<{
       activeUser = { ...activeUser, name: customUserName.trim() };
     }
 
-    const existingSquad = await squadDataService.getSquad(squadId);
-    if (!existingSquad || existingSquad.status === 'ended') {
+    const lookupResult = await squadDataService.findSquadByCode(squadId);
+    const existingSquad = lookupResult.squad;
+    if (!existingSquad || lookupResult.error || existingSquad.status === 'ended') {
+      console.warn('[JOIN SQUAD] Lookup failed in joinSquad:', lookupResult.error);
       return false;
     }
 
+    const targetSquadId = existingSquad.squadId || existingSquad.code;
     const startLat = initialCoords?.lat || userCoords?.lat || existingSquad.canonicalRoute.polyline?.[0]?.lat || 0;
     const startLng = initialCoords?.lng || userCoords?.lng || existingSquad.canonicalRoute.polyline?.[0]?.lng || 0;
 
@@ -374,13 +381,16 @@ export const SquadProvider: React.FC<{
       isHost: existingSquad.hostId === activeUser.id
     };
 
-    await squadDataService.updateMember(squadId, member);
+    await squadDataService.updateMember(targetSquadId, member);
     setSquad(existingSquad);
 
+    const updatedMembers = await squadDataService.getMembers(targetSquadId);
+    setMembers(updatedMembers);
+
     // Send arrival/join announcement in chat
-    await squadDataService.sendMessage(squadId, {
+    await squadDataService.sendMessage(targetSquadId, {
       id: `msg-${Date.now()}`,
-      squadId,
+      squadId: targetSquadId,
       senderId: activeUser.id,
       senderName: effectiveMemberName,
       senderAvatar: activeUser.avatar,

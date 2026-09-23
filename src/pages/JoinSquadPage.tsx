@@ -39,6 +39,13 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
+  const [errorDetails, setErrorDetails] = useState<{
+    title: string;
+    message: string;
+    code?: string;
+    technical?: string;
+  } | null>(null);
+
   useEffect(() => {
     if (user?.name && !memberName) {
       setMemberName(user.name);
@@ -48,19 +55,52 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
   useEffect(() => {
     const fetchSquadDetails = async () => {
       setIsLoading(true);
+      setErrorDetails(null);
+      setError(null);
+
       try {
-        const found = await squadDataService.getSquad(squadId);
-        if (!found) {
-          setError(`Squad #${squadId} was not found or has expired.`);
-        } else if (found.status === 'ended') {
-          setError(`This squad session has already ended.`);
+        const lookupResult = await squadDataService.findSquadByCode(squadId);
+
+        if (lookupResult.error || !lookupResult.squad) {
+          const errCode = lookupResult.errorCode || 'NOT_FOUND';
+          let title = 'Squad Not Available';
+
+          if (errCode === 'NOT_FOUND') {
+            title = 'Squad Not Found';
+          } else if (errCode === 'EXPIRED') {
+            title = 'Squad Expired';
+          } else if (errCode === 'ENDED') {
+            title = 'Squad Ended';
+          } else if (errCode === 'PERMISSION_DENIED') {
+            title = 'Permission Denied';
+          } else if (errCode === 'NETWORK_ERROR') {
+            title = 'Connection Issue';
+          } else if (errCode === 'INVALID_CODE') {
+            title = 'Invalid Squad Code';
+          }
+
+          console.error(`[JOIN SQUAD] Lookup failed (${errCode}):`, lookupResult.error, lookupResult.technicalError);
+          setError(lookupResult.error || 'Squad could not be found.');
+          setErrorDetails({
+            title,
+            message: lookupResult.error || 'Squad could not be found.',
+            code: errCode,
+            technical: lookupResult.technicalError
+          });
         } else {
+          const found = lookupResult.squad;
           setSquad(found);
-          const members = await squadDataService.getMembers(squadId);
+          const members = await squadDataService.getMembers(found.squadId || found.code);
           setMemberCount(members.length || 1);
         }
-      } catch (err) {
+      } catch (err: any) {
+        console.error('[JOIN SQUAD] Unexpected error loading squad:', err);
         setError('Failed to load squad details.');
+        setErrorDetails({
+          title: 'Unexpected Error',
+          message: 'An unexpected error occurred while loading this squad. Please try again.',
+          technical: err?.message || String(err)
+        });
       } finally {
         setIsLoading(false);
       }
@@ -158,6 +198,9 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
   }
 
   if (error || !squad) {
+    const title = errorDetails?.title || 'Squad Not Available';
+    const message = errorDetails?.message || error || 'This squad invitation link is invalid or no longer active.';
+
     return (
       <div
         style={{
@@ -173,23 +216,52 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
         <div
           className="glass-panel"
           style={{
-            maxWidth: '420px',
+            maxWidth: '440px',
             width: '100%',
             padding: '32px',
             textAlign: 'center',
-            backgroundColor: 'var(--bg-secondary)'
+            backgroundColor: 'var(--bg-secondary)',
+            border: '1px solid var(--border-medium)'
           }}
         >
           <AlertCircle size={48} color="var(--accent-red)" style={{ margin: '0 auto 16px' }} />
           <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
-            Squad Not Available
+            {title}
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
-            {error || 'This squad invitation link is invalid or no longer active.'}
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '20px', lineHeight: 1.5 }}>
+            {message}
           </p>
-          <button onClick={onCancel} className="btn-primary" style={{ width: '100%', padding: '12px' }}>
-            Go to Home
-          </button>
+
+          {errorDetails?.technical && (
+            <div
+              style={{
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                color: 'var(--text-muted)',
+                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                textAlign: 'left',
+                wordBreak: 'break-all'
+              }}
+            >
+              Error: {errorDetails.technical}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-secondary"
+              style={{ flex: 1, padding: '12px' }}
+            >
+              Retry
+            </button>
+            <button onClick={onCancel} className="btn-primary" style={{ flex: 1, padding: '12px' }}>
+              Go to Home
+            </button>
+          </div>
         </div>
       </div>
     );

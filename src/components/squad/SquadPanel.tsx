@@ -44,7 +44,7 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
-  const inviteUrl = getInviteUrl(squad.squadId);
+  const inviteUrl = getInviteUrl(squad.code || squad.squadId);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inviteUrl);
