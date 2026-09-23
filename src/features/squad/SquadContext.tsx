@@ -283,7 +283,11 @@ export const SquadProvider: React.FC<{
       activeRegroupPoint: null
     };
 
-    await squadDataService.saveSquad(newSquad);
+    try {
+      await squadDataService.saveSquad(newSquad);
+    } catch (saveErr) {
+      console.warn('[CREATE SQUAD] saveSquad warning:', saveErr);
+    }
 
     // Add host as first squad member
     const hostMember: SquadMember = {
@@ -306,7 +310,12 @@ export const SquadProvider: React.FC<{
       isHost: true
     };
 
-    await squadDataService.updateMember(squadId, hostMember);
+    try {
+      await squadDataService.updateMember(squadId, hostMember);
+    } catch (memberErr) {
+      console.warn('[CREATE SQUAD] updateMember warning:', memberErr);
+    }
+
     setSquad(newSquad);
     setMembers([hostMember]);
     return squadId;

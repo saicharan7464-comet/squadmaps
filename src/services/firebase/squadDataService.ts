@@ -55,7 +55,7 @@ export class SquadDataService {
     // 1. Immediately cache in local sync for instant reactivity
     localSyncService.saveSquad(optimized);
 
-    // 2. Persist to Firestore as the source of truth
+    // 2. Persist to Firestore as the source of truth with safety timeout
     if (isFirebaseConfigured() && db) {
       console.log(`[CREATE SQUAD]\nGenerated code: ${code}\nFirestore document ID: ${squad.squadId}\nWriting to Firestore...`);
       try {
@@ -68,11 +68,14 @@ export class SquadDataService {
           expiresAt: squad.expiresAt || (Date.now() + 24 * 60 * 60 * 1000)
         };
 
-        await setDoc(doc(db, 'squads', squad.squadId), firestoreData);
+        // Write with a 2.5s safety race so Firestore quota or network hangs never freeze Step 4
+        await Promise.race([
+          setDoc(doc(db, 'squads', squad.squadId), firestoreData),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore write timeout or quota delay')), 2500))
+        ]);
         console.log(`[CREATE SQUAD]\nGenerated code: ${code}\nFirestore document ID: ${squad.squadId}\nFirestore write successful: true`);
       } catch (err: any) {
-        console.error(`[CREATE SQUAD]\nGenerated code: ${code}\nFirestore document ID: ${squad.squadId}\nFirestore write successful: false\nError:`, err);
-        throw err;
+        console.warn(`[CREATE SQUAD]\nGenerated code: ${code}\nFirestore document ID: ${squad.squadId}\nFirestore write pending/offline (${err?.message || err}). LocalSync active.`);
       }
     }
   }

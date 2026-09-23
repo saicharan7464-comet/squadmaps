@@ -4,6 +4,7 @@ import { Place } from '../../types/places';
 import { PlaceSearchBox } from '../places/PlaceSearchBox';
 import { routingProvider } from '../../services/routing';
 import { formatDistance, formatDuration } from '../../utils/format';
+import { haversineDistance } from '../../utils/geo';
 import { QRCodeSVG } from 'qrcode.react';
 import { getInviteUrl } from '../../utils/inviteUrl';
 import {
@@ -94,6 +95,49 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
     }
   };
 
+  const createDirectRoute = (origin: LatLng, destination: LatLng, mode: VehicleMode): Route => {
+    const distMeters = Math.max(100, Math.round(haversineDistance(origin, destination)));
+    let speedKmH = 45;
+    if (mode === 'motorcycle') speedKmH = 50;
+    else if (mode === 'bicycle') speedKmH = 15;
+    else if (mode === 'walking') speedKmH = 5;
+
+    const durationSec = Math.max(60, Math.round((distMeters / (speedKmH * 1000 / 3600))));
+
+    return {
+      id: `direct-${Date.now()}`,
+      name: 'Direct Route',
+      distance: distMeters,
+      duration: durationSec,
+      polyline: [origin, destination],
+      steps: [
+        {
+          instruction: 'Proceed to destination',
+          distance: distMeters,
+          duration: durationSec,
+          startLocation: origin,
+          endLocation: destination,
+          maneuver: {
+            type: 'depart',
+            instruction: 'Proceed to destination'
+          }
+        },
+        {
+          instruction: 'Arrive at destination',
+          distance: 0,
+          duration: 0,
+          startLocation: destination,
+          endLocation: destination,
+          maneuver: {
+            type: 'arrive',
+            instruction: 'Arrive at destination'
+          }
+        }
+      ],
+      summary: 'Direct trajectory'
+    };
+  };
+
   // Step 2: Select Vehicle & Calculate Routes
   const handleVehicleSelect = async (mode: VehicleMode) => {
     setVehicleMode(mode);
@@ -109,10 +153,19 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
         selectedPlace.coordinates,
         mode
       );
-      setRoutes(calculatedRoutes);
-      setSelectedRouteIndex(0);
+      if (calculatedRoutes && calculatedRoutes.length > 0) {
+        setRoutes(calculatedRoutes);
+        setSelectedRouteIndex(0);
+      } else {
+        const fallback = createDirectRoute(origin, selectedPlace.coordinates, mode);
+        setRoutes([fallback]);
+        setSelectedRouteIndex(0);
+      }
     } catch (err) {
-      console.warn('Failed to calculate routes:', err);
+      console.warn('Failed to calculate routes, using direct fallback:', err);
+      const fallback = createDirectRoute(origin, selectedPlace.coordinates, mode);
+      setRoutes([fallback]);
+      setSelectedRouteIndex(0);
     } finally {
       setIsLoadingRoutes(false);
       setStep(4);
@@ -121,9 +174,9 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
   // Step 4: Finalize Squad Creation
   const handleFinalizeSquad = async () => {
-    if (!selectedPlace || routes.length === 0 || isCreating) return;
-    const chosenRoute = routes[selectedRouteIndex] || routes[0];
-    if (!chosenRoute) return;
+    if (!selectedPlace || isCreating) return;
+    const origin: LatLng = userLocation || { lat: 17.385, lng: 78.4867 };
+    const chosenRoute = routes[selectedRouteIndex] || routes[0] || createDirectRoute(origin, selectedPlace.coordinates, vehicleMode);
 
     setIsCreating(true);
     setErrorMessage(null);
@@ -147,7 +200,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
         throw new Error('Failed to generate Squad session. Please try again.');
       }
     } catch (err: any) {
-      console.error('Squad creation error:', err);
+      console.error('Squad creation error in Step 4:', err);
       setErrorMessage(err?.message || 'Failed to create squad. Please try again.');
     } finally {
       setIsCreating(false);
