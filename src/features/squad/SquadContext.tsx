@@ -277,7 +277,9 @@ export const SquadProvider: React.FC<{
       activeRegroupPoint: null
     };
 
+    console.log('[SquadContext] Creating squad:', squadId, newSquad.name);
     await squadDataService.saveSquad(newSquad);
+    console.log('[SquadContext] Squad server persistence confirmed for:', squadId);
 
     // Add host as first squad member
     const hostMember: SquadMember = {

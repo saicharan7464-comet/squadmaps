@@ -189,32 +189,41 @@ export class SquadDataService {
   // ==========================================================
 
   async saveSquad(squad: Squad): Promise<void> {
-    // 1. Save locally immediately.
-    localSyncService.saveSquad(squad);
-
-    // 2. Supabase must be configured.
+    // 1. Supabase must be configured and initialized.
     if (!isSupabaseConfigured() || !supabase) {
-      console.warn('Supabase is not configured. Squad saved locally.');
-      return;
+      const errorMsg = 'Supabase server is not configured or unavailable. Squad cannot be created on the server.';
+      console.error('[squadDataService] saveSquad failed:', errorMsg);
+      throw new Error(errorMsg);
     }
 
-    // 3. Upsert squad into Supabase squads table.
+    // 2. Upsert squad into Supabase squads table and verify persistence.
     try {
       const row = mapSquadToRow(squad);
+      console.log('[squadDataService] Persisting squad to Supabase:', squad.squadId);
+
       const query = supabase
         .from('squads')
-        .upsert(row, { onConflict: 'squad_id' });
+        .upsert(row, { onConflict: 'squad_id' })
+        .select('squad_id')
+        .single();
 
-      const { error } = await withTimeout(query, 5000);
+      const { data, error } = await withTimeout(query, 5000);
       if (error) {
+        console.error('[squadDataService] Supabase squads upsert error:', error);
         throw error;
       }
 
-      console.log('Squad successfully saved to Supabase:', squad.squadId);
-    } catch (err) {
-      console.error('Failed to save squad to Supabase:', err);
+      if (!data || data.squad_id !== squad.squadId) {
+        throw new Error(`Database did not acknowledge persistence of squad ${squad.squadId}`);
+      }
+
+      // 3. Save locally only after remote persistence is verified.
+      localSyncService.saveSquad(squad);
+      console.log('[squadDataService] Squad successfully saved to Supabase and verified:', squad.squadId);
+    } catch (err: any) {
+      console.error('[squadDataService] Failed to save squad to Supabase:', err);
       throw new Error(
-        'Could not save the squad to the server. Please try again later.'
+        err?.message || 'Could not save the squad to the server. Please try again later.'
       );
     }
   }
