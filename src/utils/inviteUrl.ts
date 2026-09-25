@@ -2,7 +2,7 @@
  * Generates an invite URL that works across all environments:
  * - Local dev (localhost)
  * - Local Wi-Fi network (192.168.x.x)
- * - Vercel / Netlify / Firebase / Cloudflare
+ * - Vercel / Netlify / Cloudflare
  * - Subdirectory deployments (e.g. GitHub Pages)
  *
  * Uses query parameter `?join=CODE` so that static web servers always serve index.html

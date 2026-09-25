@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Squad } from '../types/squad';
 import { LatLng } from '../types/navigation';
-import { squadDataService } from '../services/firebase/squadDataService';
+import { squadDataService } from '../services/squad/squadDataService';
 import { formatDistance, formatDuration } from '../utils/format';
 import { useAuth } from '../features/auth/AuthContext';
 import { useSquad } from '../features/squad/SquadContext';

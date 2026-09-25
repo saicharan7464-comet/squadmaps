@@ -3,7 +3,7 @@ import { Squad, SquadMember, SquadProgress, RegroupPoint, SquadSettings } from '
 import { Route, LatLng, VehicleMode } from '../../types/navigation';
 import { ChatMessage, QuickActionType } from '../../types/chat';
 import { Place, PlaceSuggestion } from '../../types/places';
-import { squadDataService } from '../../services/firebase/squadDataService';
+import { squadDataService } from '../../services/squad/squadDataService';
 import { useAuth } from '../auth/AuthContext';
 import { haversineDistance } from '../../utils/geo';
 import { soundService } from '../../services/audio/soundService';

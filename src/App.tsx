@@ -18,7 +18,7 @@ import { routingProvider } from './services/routing';
 import { Place } from './types/places';
 import { Route, LatLng } from './types/navigation';
 import { SquadMember } from './types/squad';
-import { squadDataService } from './services/firebase/squadDataService';
+import { squadDataService } from './services/squad/squadDataService';
 import { parseSquadId } from './utils/inviteUrl';
 import {
   Users,

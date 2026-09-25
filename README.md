@@ -26,7 +26,7 @@ SquadNav is a production-quality group navigation web application built for conv
 - **Styling**: Vanilla CSS with modern Dark Cockpit navigation design tokens and glassmorphism
 - **Map & Routing**: Leaflet / CartoDB Dark Matter / Google Maps Platform, OSRM routing engine
 - **Places & Geocoding**: OpenStreetMap Nominatim
-- **Real-Time Backend**: Firebase Firestore + Auth (with built-in multi-client LocalSync fallback for instant testing)
+- **Real-Time Backend**: Supabase Auth, Supabase PostgreSQL & Supabase Realtime (with built-in multi-client LocalSync fallback for instant testing)
 - **Audio & Speech**: Web Audio API synthesized chimes & Web Speech API voice guidance
 
 ---
@@ -43,7 +43,7 @@ Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Fill in your Google Maps and/or Firebase credentials if available (optional: SquadNav operates out of the box with built-in sync).
+Fill in your Supabase credentials in .env (optional: SquadNav operates out of the box with built-in sync).
 
 ### 3. Run Development Server
 ```bash
