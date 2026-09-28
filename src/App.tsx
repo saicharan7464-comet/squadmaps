@@ -16,7 +16,7 @@ import { HomePage } from './pages/HomePage';
 import { JoinSquadPage } from './pages/JoinSquadPage';
 import { routingProvider } from './services/routing';
 import { Place } from './types/places';
-import { Route, LatLng } from './types/navigation';
+import { Route, LatLng, VehicleMode } from './types/navigation';
 import { SquadMember } from './types/squad';
 import { squadDataService } from './services/squad/squadDataService';
 import { nominatimPlacesProvider } from './services/places/nominatimPlacesProvider';
@@ -33,7 +33,10 @@ import {
   Sparkles,
   Home,
   X,
-  MapPin
+  MapPin,
+  Car,
+  Bike,
+  Footprints
 } from 'lucide-react';
 
 type AppView = 'home' | 'join' | 'map';
@@ -43,7 +46,7 @@ const NavigationCockpit: React.FC<{
   openCreateSquadOnMount?: boolean;
   autoStartNavigationOnMount?: boolean;
 }> = ({ onGoHome, openCreateSquadOnMount = false, autoStartNavigationOnMount = false }) => {
-  const { user } = useAuth();
+  const { user, updateProfileName } = useAuth();
   const {
     squad,
     members,
@@ -93,6 +96,19 @@ const NavigationCockpit: React.FC<{
   const [selectedMeetingCoords, setSelectedMeetingCoords] = useState<LatLng | null>(null);
   const [selectedMeetingName, setSelectedMeetingName] = useState<string>('');
   const [mapCenterPoint, setMapCenterPoint] = useState<LatLng | null>(null);
+  const [previewMeetingRoute, setPreviewMeetingRoute] = useState<Route | null>(null);
+
+  // Destination Search & Alternative Routes State (Flow B)
+  const [availableRoutes, setAvailableRoutes] = useState<Route[]>([]);
+  const [selectedTransportMode, setSelectedTransportMode] = useState<VehicleMode>('car');
+  const [isCalculatingRoutes, setIsCalculatingRoutes] = useState<boolean>(false);
+
+  // Flow B: Short Create Squad Modal
+  const [isShortCreateSquadOpen, setIsShortCreateSquadOpen] = useState(false);
+  const [shortHostName, setShortHostName] = useState(user?.name || '');
+  const [shortGroupName, setShortGroupName] = useState('');
+  const [shortSquadError, setShortSquadError] = useState<string | null>(null);
+  const [isSubmittingShortSquad, setIsSubmittingShortSquad] = useState(false);
 
   // Demo / Convoy Simulator Mode
   const [isConvoyDemoActive, setIsConvoyDemoActive] = useState(false);
@@ -206,16 +222,95 @@ const NavigationCockpit: React.FC<{
   ]);
 
   // Destination Search Selection (Normal Navigation Mode)
-  const handleSelectPlace = async (place: Place) => {
+  const handleSelectPlace = async (place: Place, modeOverride?: VehicleMode) => {
     setSelectedDestination(place);
+    const mode = modeOverride || selectedTransportMode;
     const origin: LatLng = location.coordinates || { lat: 17.385, lng: 78.4867 };
-    const calculatedRoutes = await routingProvider.calculateRoutes(
-      origin,
-      place.coordinates,
-      squad?.vehicleMode || 'car'
-    );
-    if (calculatedRoutes.length > 0) {
-      setActiveRoute(calculatedRoutes[0]);
+    setIsCalculatingRoutes(true);
+    try {
+      const calculatedRoutes = await routingProvider.calculateRoutes(
+        origin,
+        place.coordinates,
+        mode
+      );
+      if (calculatedRoutes && calculatedRoutes.length > 0) {
+        setAvailableRoutes(calculatedRoutes);
+        setActiveRoute(calculatedRoutes[0]);
+      } else {
+        setAvailableRoutes([]);
+        setActiveRoute(null);
+      }
+    } catch (err) {
+      console.warn('Route calculation error:', err);
+      setAvailableRoutes([]);
+      setActiveRoute(null);
+    } finally {
+      setIsCalculatingRoutes(false);
+    }
+  };
+
+  const handleChangeTransportMode = (mode: VehicleMode) => {
+    setSelectedTransportMode(mode);
+    if (selectedDestination) {
+      handleSelectPlace(selectedDestination, mode);
+    }
+  };
+
+  const handleOpenShortCreateSquad = () => {
+    setShortHostName(user?.name || '');
+    setShortGroupName(selectedDestination ? `${selectedDestination.name} Trip` : 'Squad Trip');
+    setShortSquadError(null);
+    setIsShortCreateSquadOpen(true);
+  };
+
+  const handleShortCreateSquadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shortHostName.trim()) {
+      setShortSquadError('Please enter a host name.');
+      return;
+    }
+    if (!shortGroupName.trim()) {
+      setShortSquadError('Please enter a squad name.');
+      return;
+    }
+    if (!selectedDestination || !activeRoute) {
+      setShortSquadError('No destination route selected.');
+      return;
+    }
+
+    setIsSubmittingShortSquad(true);
+    setShortSquadError(null);
+    try {
+      updateProfileName(shortHostName.trim());
+      await createSquad(
+        shortGroupName.trim(),
+        selectedDestination.name,
+        selectedDestination.coordinates,
+        selectedTransportMode,
+        activeRoute,
+        shortHostName.trim()
+      );
+      setIsShortCreateSquadOpen(false);
+      setSelectedDestination(null);
+      setAvailableRoutes([]);
+      setIsSquadPanelOpen(true);
+    } catch (err: any) {
+      console.error('Failed to create squad (Flow B):', err);
+      setShortSquadError(err?.message || 'Failed to create squad. Please try again.');
+    } finally {
+      setIsSubmittingShortSquad(false);
+    }
+  };
+
+  const calculateMeetingPointPreviewRoute = async (targetCoords: LatLng) => {
+    const origin: LatLng = location.coordinates || { lat: 17.385, lng: 78.4867 };
+    try {
+      const routes = await routingProvider.calculateRoutes(origin, targetCoords, squad?.vehicleMode || 'car');
+      if (routes && routes.length > 0) {
+        setPreviewMeetingRoute(routes[0]);
+      }
+    } catch (err) {
+      console.warn('Failed to calculate preview route to meeting point:', err);
     }
   };
 
@@ -244,6 +339,7 @@ const NavigationCockpit: React.FC<{
     setIsSelectingMeetingPoint(true);
     setSelectedMeetingCoords(null);
     setSelectedMeetingName('');
+    setPreviewMeetingRoute(null);
     setIsSquadPanelOpen(false);
     setIsMobileSheetExpanded(false);
   };
@@ -252,6 +348,7 @@ const NavigationCockpit: React.FC<{
     setIsSelectingMeetingPoint(false);
     setSelectedMeetingCoords(null);
     setSelectedMeetingName('');
+    setPreviewMeetingRoute(null);
     setIsSquadPanelOpen(true);
   };
 
@@ -262,6 +359,7 @@ const NavigationCockpit: React.FC<{
     setIsSelectingMeetingPoint(false);
     setSelectedMeetingCoords(null);
     setSelectedMeetingName('');
+    setPreviewMeetingRoute(null);
     setIsSquadPanelOpen(true);
   };
 
@@ -269,6 +367,7 @@ const NavigationCockpit: React.FC<{
     if (isSelectingMeetingPoint) {
       setSelectedMeetingCoords(coords);
       setSelectedMeetingName('Locating address...');
+      calculateMeetingPointPreviewRoute(coords);
       try {
         const address = await nominatimPlacesProvider.reverseGeocode(coords);
         const cleanName = address ? address.split(',').slice(0, 3).join(', ') : 'Selected Meeting Point';
@@ -383,6 +482,7 @@ const NavigationCockpit: React.FC<{
         regroupPoint={activeRegroupPoint}
         previewPoint={selectedMeetingCoords}
         previewPointName={selectedMeetingName}
+        previewRoute={previewMeetingRoute}
         centerPoint={mapCenterPoint}
         focusedMemberId={focusedMemberId}
         onMemberClick={handleLocateMember}
@@ -410,6 +510,9 @@ const NavigationCockpit: React.FC<{
             setIsSquadPanelOpen((prev) => !prev);
             setIsMobileSheetExpanded((prev) => !prev);
           }}
+          onToggleChat={squad ? () => setIsChatOpen((prev) => !prev) : undefined}
+          isChatOpen={isChatOpen}
+          hasUnreadMessages={messages.length > 0}
         />
       )}
 
@@ -488,28 +591,123 @@ const NavigationCockpit: React.FC<{
             <div
               className="glass-panel animate-slide-down"
               style={{
-                padding: '12px 16px',
+                padding: '14px 16px',
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: 'var(--bg-glass-card)'
+                flexDirection: 'column',
+                gap: '10px',
+                backgroundColor: 'var(--bg-glass-card)',
+                boxShadow: 'var(--shadow-lg)'
               }}
             >
-              <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 700 }}>
-                  SELECTED ROUTE
-                </div>
-                <div style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF' }}>
-                  {activeRoute.name}
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  {Math.round(activeRoute.distance / 1000)} km • ~{Math.round(activeRoute.duration / 60)} min
+              {/* Transport Mode Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Transport Mode
+                </span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[
+                    { id: 'car' as VehicleMode, label: 'Car', icon: Car },
+                    { id: 'motorcycle' as VehicleMode, label: 'Bike', icon: Bike },
+                    { id: 'bicycle' as VehicleMode, label: 'Cycle', icon: Bike },
+                    { id: 'walking' as VehicleMode, label: 'Walk', icon: Footprints }
+                  ].map((mode) => {
+                    const Icon = mode.icon;
+                    const isSelected = selectedTransportMode === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        onClick={() => handleChangeTransportMode(mode.id)}
+                        disabled={isCalculatingRoutes}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '999px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          backgroundColor: isSelected ? 'var(--accent-cyan)' : 'var(--bg-card)',
+                          color: isSelected ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                          border: isSelected ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <Icon size={12} />
+                        <span>{mode.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {/* Route Alternatives List */}
+              {availableRoutes.length > 1 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+                    Available Routes ({availableRoutes.length})
+                  </div>
+                  {availableRoutes.map((r, idx) => {
+                    const isSelected = activeRoute?.id === r.id || activeRoute?.name === r.name;
+                    return (
+                      <div
+                        key={r.id || idx}
+                        onClick={() => setActiveRoute(r)}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: isSelected ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                          border: isSelected ? '1.5px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: isSelected ? '#FFFFFF' : 'var(--text-secondary)' }}>
+                            {r.name || `Route ${idx + 1}`}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {Math.round(r.distance / 1000)} km • ~{Math.round(r.duration / 60)} min
+                          </div>
+                        </div>
+                        {isSelected ? (
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-cyan)' }}>
+                            Selected
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            Select
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>
+                      SELECTED ROUTE
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF' }}>
+                      {activeRoute.name}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      {Math.round(activeRoute.distance / 1000)} km • ~{Math.round(activeRoute.duration / 60)} min
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons: Create Squad (Flow B), Start Nav, Clear */}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', paddingTop: '6px', borderTop: '1px solid var(--border-subtle)' }}>
                 <button
-                  onClick={() => setIsCreateSquadOpen(true)}
+                  type="button"
+                  onClick={handleOpenShortCreateSquad}
                   className="btn-secondary"
                   style={{ fontSize: '13px', padding: '8px 14px' }}
                 >
@@ -517,6 +715,7 @@ const NavigationCockpit: React.FC<{
                   <span>Create Squad</span>
                 </button>
                 <button
+                  type="button"
                   onClick={handleStartNavigation}
                   className="btn-primary"
                   style={{ fontSize: '13px', padding: '8px 16px' }}
@@ -525,9 +724,11 @@ const NavigationCockpit: React.FC<{
                   <span>Start Nav</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setActiveRoute(null);
                     setSelectedDestination(null);
+                    setAvailableRoutes([]);
                   }}
                   className="btn-icon"
                   title="Clear Route"
@@ -639,6 +840,8 @@ const NavigationCockpit: React.FC<{
             onLocateMember={handleLocateMember}
             onProposeRegroup={handleStartSelectingMeetingPoint}
             onOpenSettings={() => setIsHostSettingsOpen(true)}
+            onOpenChat={() => setIsChatOpen(true)}
+            hasUnreadMessages={messages.length > 0}
           />
         </div>
       )}
@@ -699,6 +902,8 @@ const NavigationCockpit: React.FC<{
               onLocateMember={handleLocateMember}
               onProposeRegroup={handleStartSelectingMeetingPoint}
               onOpenSettings={() => setIsHostSettingsOpen(true)}
+              onOpenChat={() => setIsChatOpen(true)}
+              hasUnreadMessages={messages.length > 0}
             />
           </div>
         </div>
@@ -756,6 +961,7 @@ const NavigationCockpit: React.FC<{
                   setSelectedMeetingCoords(place.coordinates);
                   setSelectedMeetingName(place.name || place.address || 'Selected Location');
                   setMapCenterPoint(place.coordinates);
+                  calculateMeetingPointPreviewRoute(place.coordinates);
                 }}
                 placeholder="Search McDonald's, petrol pump, hotel, temple..."
                 showCategories={true}
@@ -817,9 +1023,17 @@ const NavigationCockpit: React.FC<{
               <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
                 <button
                   className="btn-secondary"
+                  onClick={handleCancelMeetingPoint}
+                  style={{ flex: 1, padding: '10px', fontSize: '13px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn-secondary"
                   onClick={() => {
                     setSelectedMeetingCoords(null);
                     setSelectedMeetingName('');
+                    setPreviewMeetingRoute(null);
                   }}
                   style={{ flex: 1, padding: '10px', fontSize: '13px' }}
                 >
@@ -896,7 +1110,7 @@ const NavigationCockpit: React.FC<{
         )}
       </div>
 
-      {/* CREATE SQUAD WIZARD MODAL */}
+      {/* CREATE SQUAD WIZARD MODAL (FLOW A: HOME PAGE FULL 5-STEP WIZARD) */}
       <CreateSquadWizard
         isOpen={isCreateSquadOpen}
         onClose={() => setIsCreateSquadOpen(false)}
@@ -904,6 +1118,134 @@ const NavigationCockpit: React.FC<{
         onCreateSquad={createSquad}
         onStartNavigation={handleStartNavigation}
       />
+
+      {/* FLOW B — SHORT CREATE SQUAD MODAL (FROM MAP SEARCH ROUTE) */}
+      {isShortCreateSquadOpen && selectedDestination && activeRoute && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 'var(--z-modal)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={() => setIsShortCreateSquadOpen(false)}
+        >
+          <div
+            className="glass-panel animate-scale-up"
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              padding: '28px',
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1.5px solid var(--accent-cyan)',
+              boxShadow: 'var(--shadow-xl)',
+              borderRadius: 'var(--radius-lg)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF' }}>Create Squad</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Trip to <strong style={{ color: 'var(--accent-cyan)' }}>{selectedDestination.name}</strong> • {Math.round(activeRoute.distance / 1000)} km
+                </p>
+              </div>
+              <button
+                className="btn-icon"
+                onClick={() => setIsShortCreateSquadOpen(false)}
+                style={{ width: '36px', height: '36px' }}
+              >
+                <X size={18} color="var(--text-muted)" />
+              </button>
+            </div>
+
+            <form onSubmit={handleShortCreateSquadSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Host Name *
+                </label>
+                <input
+                  type="text"
+                  value={shortHostName}
+                  onChange={(e) => {
+                    setShortHostName(e.target.value);
+                    if (shortSquadError) setShortSquadError(null);
+                  }}
+                  placeholder="Enter your name"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-medium)',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    outline: 'none'
+                  }}
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                  Group / Squad Name *
+                </label>
+                <input
+                  type="text"
+                  value={shortGroupName}
+                  onChange={(e) => {
+                    setShortGroupName(e.target.value);
+                    if (shortSquadError) setShortSquadError(null);
+                  }}
+                  placeholder="e.g. Goa Trip, Convoy Alpha"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-medium)',
+                    color: '#FFFFFF',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              {shortSquadError && (
+                <div style={{ fontSize: '12px', color: 'var(--accent-red)', fontWeight: 600 }}>
+                  {shortSquadError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsShortCreateSquadOpen(false)}
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: '12px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingShortSquad}
+                  className="btn-primary"
+                  style={{ flex: 2, padding: '12px', fontSize: '15px' }}
+                >
+                  {isSubmittingShortSquad ? 'Creating Squad...' : 'Create Squad'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* SQUAD CHAT DRAWER */}
       <SquadChatDrawer

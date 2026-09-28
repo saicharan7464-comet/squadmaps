@@ -14,6 +14,7 @@ import {
   Settings,
   X,
   MessageCircle,
+  MessageSquare,
   HelpCircle
 } from 'lucide-react';
 
@@ -28,6 +29,8 @@ interface SquadPanelProps {
   onLocateMember: (member: SquadMember) => void;
   onProposeRegroup: () => void;
   onOpenSettings?: () => void;
+  onOpenChat?: () => void;
+  hasUnreadMessages?: boolean;
 }
 
 export const SquadPanel: React.FC<SquadPanelProps> = ({
@@ -40,7 +43,9 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
   onToggleSharing,
   onLocateMember,
   onProposeRegroup,
-  onOpenSettings
+  onOpenSettings,
+  onOpenChat,
+  hasUnreadMessages = false
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -109,11 +114,37 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
             </div>
           </div>
 
-          {isHost && onOpenSettings && (
-            <button className="btn-icon" onClick={onOpenSettings} title="Squad Settings" style={{ width: '36px', height: '36px' }}>
-              <Settings size={18} />
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {onOpenChat && (
+              <button
+                className="btn-icon"
+                onClick={onOpenChat}
+                title="Squad Chat Radio"
+                style={{ width: '36px', height: '36px', position: 'relative' }}
+              >
+                <MessageSquare size={18} color="var(--accent-cyan)" />
+                {hasUnreadMessages && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '4px',
+                      right: '4px',
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-green)'
+                    }}
+                  />
+                )}
+              </button>
+            )}
+
+            {isHost && onOpenSettings && (
+              <button className="btn-icon" onClick={onOpenSettings} title="Squad Settings" style={{ width: '36px', height: '36px' }}>
+                <Settings size={18} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Progress Summary Chips */}

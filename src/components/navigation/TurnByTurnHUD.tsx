@@ -11,7 +11,8 @@ import {
   X,
   AlertTriangle,
   Compass,
-  Users
+  Users,
+  MessageSquare
 } from 'lucide-react';
 
 interface TurnByTurnHUDProps {
@@ -29,6 +30,9 @@ interface TurnByTurnHUDProps {
   squadMemberCount?: number;
   onToggleSquad?: () => void;
   isSquadOpen?: boolean;
+  onToggleChat?: () => void;
+  isChatOpen?: boolean;
+  hasUnreadMessages?: boolean;
 }
 
 export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
@@ -45,7 +49,10 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
   onExitNavigation,
   squadMemberCount,
   onToggleSquad,
-  isSquadOpen = false
+  isSquadOpen = false,
+  onToggleChat,
+  isChatOpen = false,
+  hasUnreadMessages = false
 }) => {
   // Maneuver Icon Helper
   const renderManeuverIcon = (step: RouteStep | null) => {
@@ -150,15 +157,48 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
             )}
           </div>
 
-          {/* Voice Guidance Toggle */}
-          <button
-            className="btn-icon"
-            onClick={onToggleVoice}
-            title={voiceMuted ? 'Unmute voice navigation' : 'Mute voice navigation'}
-            style={{ width: '42px', height: '42px', flexShrink: 0 }}
-          >
-            {voiceMuted ? <VolumeX size={20} color="var(--accent-red)" /> : <Volume2 size={20} color="var(--accent-cyan)" />}
-          </button>
+          {/* Top Controls: Chat & Voice Guidance */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {onToggleChat && (
+              <button
+                className="btn-icon"
+                onClick={onToggleChat}
+                title="Squad Chat Radio"
+                style={{
+                  width: '42px',
+                  height: '42px',
+                  position: 'relative',
+                  backgroundColor: isChatOpen ? 'rgba(0, 240, 255, 0.2)' : undefined,
+                  borderColor: isChatOpen ? 'var(--accent-cyan)' : undefined
+                }}
+              >
+                <MessageSquare size={20} color="var(--accent-cyan)" />
+                {hasUnreadMessages && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-green)'
+                    }}
+                  />
+                )}
+              </button>
+            )}
+
+            {/* Voice Guidance Toggle */}
+            <button
+              className="btn-icon"
+              onClick={onToggleVoice}
+              title={voiceMuted ? 'Unmute voice navigation' : 'Mute voice navigation'}
+              style={{ width: '42px', height: '42px', flexShrink: 0 }}
+            >
+              {voiceMuted ? <VolumeX size={20} color="var(--accent-red)" /> : <Volume2 size={20} color="var(--accent-cyan)" />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -265,6 +305,41 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
                 <span style={{ fontWeight: 700, fontSize: '13px' }}>
                   Squad {squadMemberCount !== undefined ? `(${squadMemberCount})` : ''}
                 </span>
+              </button>
+            )}
+
+            {onToggleChat && (
+              <button
+                onClick={onToggleChat}
+                className="btn-secondary"
+                title="Open Squad Chat Radio"
+                style={{
+                  borderRadius: 'var(--radius-full)',
+                  padding: '10px 14px',
+                  backgroundColor: isChatOpen ? 'rgba(0, 240, 255, 0.2)' : 'var(--bg-glass)',
+                  borderColor: isChatOpen ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                  color: isChatOpen ? 'var(--accent-cyan)' : 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  position: 'relative'
+                }}
+              >
+                <MessageSquare size={18} color="var(--accent-cyan)" />
+                <span style={{ fontWeight: 700, fontSize: '13px' }}>Chat</span>
+                {hasUnreadMessages && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--accent-green)'
+                    }}
+                  />
+                )}
               </button>
             )}
 

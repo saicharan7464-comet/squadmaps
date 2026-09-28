@@ -17,6 +17,7 @@ interface MapViewProps {
   regroupPoint?: RegroupPoint | null;
   previewPoint?: LatLng | null;
   previewPointName?: string;
+  previewRoute?: Route | null;
   centerPoint?: LatLng | null;
   suggestedPlaces?: Place[];
   focusedMemberId?: string | null;
@@ -36,6 +37,7 @@ export const MapView: React.FC<MapViewProps> = ({
   regroupPoint,
   previewPoint,
   previewPointName,
+  previewRoute,
   centerPoint,
   suggestedPlaces = [],
   focusedMemberId,
@@ -46,6 +48,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
+  const previewRoutePolylineRef = useRef<L.FeatureGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const memberMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const destMarkerRef = useRef<L.Marker | null>(null);
@@ -323,6 +326,53 @@ export const MapView: React.FC<MapViewProps> = ({
       }
     }
   }, [route, isNavigating]);
+
+  // Update Preview Route Polyline (Route to Temporary Meeting Point)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (previewRoutePolylineRef.current) {
+      map.removeLayer(previewRoutePolylineRef.current);
+      previewRoutePolylineRef.current = null;
+    }
+
+    if (previewRoute && previewRoute.polyline && previewRoute.polyline.length > 0) {
+      const latLngs: [number, number][] = previewRoute.polyline.map((p) => [p.lat, p.lng]);
+
+      // Glow amber backing line
+      const glowLine = L.polyline(latLngs, {
+        color: '#FFB300',
+        weight: 9,
+        opacity: 0.4,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(map);
+
+      // Main core amber dashed route line
+      const mainLine = L.polyline(latLngs, {
+        color: '#FFA000',
+        weight: 5,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+        dashArray: '8, 8'
+      }).addTo(map);
+
+      const group = L.featureGroup([glowLine, mainLine]).addTo(map);
+      previewRoutePolylineRef.current = group;
+
+      if (previewRoute.bounds) {
+        map.fitBounds(
+          [
+            [previewRoute.bounds.south, previewRoute.bounds.west],
+            [previewRoute.bounds.north, previewRoute.bounds.east]
+          ],
+          { padding: [60, 60], animate: true }
+        );
+      }
+    }
+  }, [previewRoute]);
 
   // Update Destination Marker
   useEffect(() => {

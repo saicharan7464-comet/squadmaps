@@ -33,17 +33,12 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
   const { joinSquad } = useSquad();
   const [squad, setSquad] = useState<Squad | null>(null);
   const [memberCount, setMemberCount] = useState<number>(1);
-  const [memberName, setMemberName] = useState<string>(user?.name || '');
+  const [memberName, setMemberName] = useState<string>('');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
-
-  useEffect(() => {
-    if (user?.name && !memberName) {
-      setMemberName(user.name);
-    }
-  }, [user?.name]);
 
   useEffect(() => {
     const fetchSquadDetails = async () => {
@@ -70,10 +65,20 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
   }, [squadId]);
 
   const handleJoinClick = () => {
+    if (!memberName.trim()) {
+      setNameError('Please enter your name to join the squad.');
+      return;
+    }
+    setNameError(null);
     setShowPermissionDialog(true);
   };
 
   const handleConfirmJoinWithLocation = async () => {
+    if (!memberName.trim()) {
+      setNameError('Please enter your name to join the squad.');
+      return;
+    }
+    const finalName = memberName.trim();
     setIsJoining(true);
     let coords: LatLng | undefined;
     try {
@@ -87,7 +92,6 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
         });
       }
       let currentUser = user;
-      const finalName = memberName.trim() || user?.name || 'Squad Member';
       if (!currentUser) {
         currentUser = await loginAsGuest(finalName);
       } else {
@@ -303,29 +307,39 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
 
         {/* Member Name Input */}
         <div style={{ marginBottom: '22px', textAlign: 'left' }}>
-          <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-            Your Name / Squad Call Sign
+          <label style={{ fontSize: '13px', fontWeight: 700, color: nameError ? 'var(--accent-red)' : 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+            Enter your name *
           </label>
           <input
             type="text"
             value={memberName}
-            onChange={(e) => setMemberName(e.target.value)}
-            placeholder="Enter your name (e.g. Priya, John)"
+            onChange={(e) => {
+              setMemberName(e.target.value);
+              if (nameError) setNameError(null);
+            }}
+            placeholder="Enter your name (e.g. Vihsnu, Priya)"
             style={{
               width: '100%',
               padding: '12px 14px',
               borderRadius: 'var(--radius-sm)',
               backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-medium)',
+              border: nameError ? '1.5px solid var(--accent-red)' : '1px solid var(--border-medium)',
               color: '#FFFFFF',
               fontSize: '15px',
               fontWeight: 600,
               outline: 'none'
             }}
+            autoFocus
           />
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
-            This name will be visible to all members in the convoy.
-          </p>
+          {nameError ? (
+            <p style={{ fontSize: '12px', color: 'var(--accent-red)', marginTop: '6px', fontWeight: 600 }}>
+              {nameError}
+            </p>
+          ) : (
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+              Your name will be visible to the host and all squad members.
+            </p>
+          )}
         </div>
 
         {/* Action Buttons */}

@@ -358,11 +358,7 @@ export const SquadProvider: React.FC<{
 
     if (existingSquad.hostId === memberUserId) {
       memberUserId = `member_${Math.random().toString(36).substring(2, 9)}`;
-      if (memberName === existingSquad.hostName) {
-        memberName = customUserName && customUserName !== existingSquad.hostName
-          ? customUserName
-          : 'Squad Member';
-      }
+      memberName = customUserName?.trim() || (currentUser.name !== existingSquad.hostName ? currentUser.name : 'Squad Member');
       memberAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${memberUserId}`;
       memberColor = '#FF3D71';
 

@@ -164,17 +164,49 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
                     maxWidth: '85%'
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      color: 'var(--text-muted)',
-                      marginBottom: '3px',
-                      alignSelf: isMe ? 'flex-end' : 'flex-start'
-                    }}
-                  >
-                    {!isMe && <strong>{msg.senderName} • </strong>}
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  </div>
+                  {!isMe && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        marginBottom: '3px',
+                        paddingLeft: '2px',
+                        maxWidth: '100%'
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          color: msg.senderColor || 'var(--accent-cyan)',
+                          letterSpacing: '0.2px'
+                        }}
+                      >
+                        {msg.senderName && msg.senderName.trim().length > 12
+                          ? `${msg.senderName.trim().substring(0, 10)}...`
+                          : (msg.senderName || 'Member')}
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  )}
+
+                  {isMe && (
+                    <div
+                      style={{
+                        fontSize: '10px',
+                        color: 'var(--text-muted)',
+                        marginBottom: '3px',
+                        alignSelf: 'flex-end',
+                        paddingRight: '2px'
+                      }}
+                    >
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    </div>
+                  )}
 
                   <div
                     style={{
