@@ -45,6 +45,7 @@ export interface SquadSettings {
   fallingBehindThresholdKm: number; // default: 3 km
   fallingBehindThresholdMins: number; // default: 7 mins
   autoReroute: boolean;
+  navigationStarted?: boolean;
 }
 
 export interface Squad {

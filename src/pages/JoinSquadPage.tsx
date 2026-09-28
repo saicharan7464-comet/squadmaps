@@ -94,8 +94,12 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
         updateProfileName(finalName);
       }
       if (squad) {
-        await joinSquad(squad.squadId, coords, finalName);
-        onJoinSuccess(squad);
+        const joined = await joinSquad(squad.squadId, coords, finalName);
+        if (joined) {
+          onJoinSuccess(squad);
+        } else {
+          setError('Failed to join squad session. Please try again.');
+        }
       }
     } catch (err) {
       console.warn('Location permission or join error:', err);
@@ -104,11 +108,16 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
           const finalName = memberName.trim() || user?.name || 'Squad Member';
           if (!user) await loginAsGuest(finalName);
           else updateProfileName(finalName);
-          await joinSquad(squad.squadId, undefined, finalName);
+          const joined = await joinSquad(squad.squadId, undefined, finalName);
+          if (joined) {
+            onJoinSuccess(squad);
+          } else {
+            setError('Failed to join squad session.');
+          }
         } catch (e) {
           console.warn('Fallback join error:', e);
+          setError('Failed to join squad session.');
         }
-        onJoinSuccess(squad);
       }
     } finally {
       setIsJoining(false);

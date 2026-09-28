@@ -302,7 +302,8 @@ export const SquadProvider: React.FC<{
       isHost: true
     };
 
-    await squadDataService.updateMember(squadId, hostMember);
+    await squadDataService.updateMember(squadId, hostMember, true);
+    setMembers([hostMember]);
     setSquad(newSquad);
     return squadId;
   };
@@ -346,14 +347,42 @@ export const SquadProvider: React.FC<{
       return false;
     }
 
-    const startLat = initialCoords?.lat || userCoords?.lat || existingSquad.canonicalRoute.polyline[0]?.lat || 0;
-    const startLng = initialCoords?.lng || userCoords?.lng || existingSquad.canonicalRoute.polyline[0]?.lng || 0;
+    const startLat = initialCoords?.lat || userCoords?.lat || existingSquad.canonicalRoute?.polyline?.[0]?.lat || 0;
+    const startLng = initialCoords?.lng || userCoords?.lng || existingSquad.canonicalRoute?.polyline?.[0]?.lng || 0;
+
+    // Ensure joining member has a distinct user ID (prevents collision if testing in 2 tabs of the same browser)
+    let memberUserId = currentUser.id;
+    let memberName = effectiveMemberName;
+    let memberAvatar = currentUser.avatar;
+    let memberColor = currentUser.color;
+
+    if (existingSquad.hostId === memberUserId) {
+      memberUserId = `member_${Math.random().toString(36).substring(2, 9)}`;
+      if (memberName === existingSquad.hostName) {
+        memberName = customUserName && customUserName !== existingSquad.hostName
+          ? customUserName
+          : 'Squad Member';
+      }
+      memberAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${memberUserId}`;
+      memberColor = '#FF3D71';
+
+      const memberProfile = {
+        id: memberUserId,
+        name: memberName,
+        avatar: memberAvatar,
+        color: memberColor,
+        isGuest: true,
+        createdAt: Date.now()
+      };
+      localStorage.setItem('squadnav_user', JSON.stringify(memberProfile));
+      updateProfileName(memberName);
+    }
 
     const member: SquadMember = {
-      userId: currentUser.id,
-      name: effectiveMemberName,
-      profileImage: currentUser.avatar,
-      color: currentUser.color,
+      userId: memberUserId,
+      name: memberName,
+      profileImage: memberAvatar,
+      color: memberColor,
       latitude: startLat,
       longitude: startLng,
 
@@ -362,15 +391,25 @@ export const SquadProvider: React.FC<{
       accuracy: 10,
       lastUpdated: Date.now(),
       eta: 'Calculating...',
-      etaSeconds: existingSquad.canonicalRoute.duration,
-      distanceRemaining: existingSquad.canonicalRoute.distance,
+      etaSeconds: existingSquad.canonicalRoute?.duration || 0,
+      distanceRemaining: existingSquad.canonicalRoute?.distance || 0,
       status: 'active',
       online: true,
       vehicleMode: existingSquad.vehicleMode,
-      isHost: existingSquad.hostId === currentUser.id
+      isHost: false
     };
 
-    await squadDataService.updateMember(squadId, member);
+    // Await verified insertion of member to Supabase
+    await squadDataService.updateMember(squadId, member, true);
+
+    // Seed latest members immediately
+    const latestMembers = await squadDataService.getMembers(squadId);
+    if (latestMembers && latestMembers.length > 0) {
+      setMembers(latestMembers);
+    } else {
+      setMembers([member]);
+    }
+
     setSquad(existingSquad);
 
     // Send arrival/join announcement in chat

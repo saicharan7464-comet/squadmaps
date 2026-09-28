@@ -99,19 +99,22 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: 'var(--z-controls)' }}>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', minWidth: 0, zIndex: 'var(--z-controls)' }}>
       {/* Search Input Bar */}
       <div
         className="glass-panel"
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '8px 14px',
-          gap: '10px',
-          backgroundColor: 'var(--bg-glass-card)'
+          padding: '8px 12px',
+          gap: '8px',
+          backgroundColor: 'var(--bg-glass-card)',
+          width: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
         }}
       >
-        <Search size={20} color="var(--accent-cyan)" />
+        <Search size={18} color="var(--accent-cyan)" style={{ flexShrink: 0 }} />
         <input
           type="text"
           value={query}
@@ -122,11 +125,13 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
           placeholder={placeholder}
           style={{
             flex: 1,
+            minWidth: 0,
+            width: '100%',
             background: 'transparent',
             border: 'none',
             outline: 'none',
             color: '#FFFFFF',
-            fontSize: '15px',
+            fontSize: '14px',
             fontFamily: 'inherit'
           }}
         />
@@ -139,13 +144,14 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
               borderRadius: '50%',
               border: '2px solid var(--accent-cyan)',
               borderTopColor: 'transparent',
-              animation: 'radarSweep 0.8s linear infinite'
+              animation: 'radarSweep 0.8s linear infinite',
+              flexShrink: 0
             }}
           />
         )}
 
         {query && (
-          <button onClick={handleClear} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
+          <button onClick={handleClear} style={{ background: 'transparent', color: 'var(--text-muted)', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
             <X size={18} />
           </button>
         )}
@@ -158,8 +164,12 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
             display: 'flex',
             gap: '8px',
             overflowX: 'auto',
+            maxWidth: '100%',
+            width: '100%',
+            minWidth: 0,
             padding: '8px 0',
-            scrollbarWidth: 'none'
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch'
           }}
         >
           {CATEGORIES.map((cat) => {

@@ -19,6 +19,7 @@ import { Place } from './types/places';
 import { Route, LatLng } from './types/navigation';
 import { SquadMember } from './types/squad';
 import { squadDataService } from './services/squad/squadDataService';
+import { nominatimPlacesProvider } from './services/places/nominatimPlacesProvider';
 import { parseSquadId } from './utils/inviteUrl';
 import {
   Users,
@@ -31,7 +32,8 @@ import {
   ChevronDown,
   Sparkles,
   Home,
-  X
+  X,
+  MapPin
 } from 'lucide-react';
 
 type AppView = 'home' | 'join' | 'map';
@@ -64,7 +66,8 @@ const NavigationCockpit: React.FC<{
     setFocusedMemberId,
     renameSquad,
     removeMember,
-    endSquad
+    endSquad,
+    updateSettings
   } = useSquad();
 
   // Location Tracker
@@ -73,7 +76,7 @@ const NavigationCockpit: React.FC<{
   // Navigation State
   const [activeRoute, setActiveRoute] = useState<Route | null>(squad?.canonicalRoute || null);
   const [isNavigating, setIsNavigating] = useState(
-    Boolean(autoStartNavigationOnMount && squad?.canonicalRoute)
+    Boolean(autoStartNavigationOnMount && squad?.canonicalRoute && (isHost || squad?.settings?.navigationStarted))
   );
   const [selectedDestination, setSelectedDestination] = useState<Place | null>(null);
 
@@ -85,6 +88,12 @@ const NavigationCockpit: React.FC<{
   const [isHostSettingsOpen, setIsHostSettingsOpen] = useState(false);
   const [isMobileSheetExpanded, setIsMobileSheetExpanded] = useState(false);
 
+  // Google Maps-Style Meeting Point Selection ("Let's Meet Here")
+  const [isSelectingMeetingPoint, setIsSelectingMeetingPoint] = useState(false);
+  const [selectedMeetingCoords, setSelectedMeetingCoords] = useState<LatLng | null>(null);
+  const [selectedMeetingName, setSelectedMeetingName] = useState<string>('');
+  const [mapCenterPoint, setMapCenterPoint] = useState<LatLng | null>(null);
+
   // Demo / Convoy Simulator Mode
   const [isConvoyDemoActive, setIsConvoyDemoActive] = useState(false);
   const convoyIntervalRef = useRef<any>(null);
@@ -93,7 +102,7 @@ const NavigationCockpit: React.FC<{
   useEffect(() => {
     if (squad?.canonicalRoute) {
       setIsSquadPanelOpen(true);
-      if (autoStartNavigationOnMount) {
+      if (autoStartNavigationOnMount && (isHost || squad?.settings?.navigationStarted)) {
         setIsNavigating(true);
       }
       if (!isHost && location.coordinates && squad.destinationCoordinates) {
@@ -125,7 +134,24 @@ const NavigationCockpit: React.FC<{
         setIsConvoyDemoActive(false);
       }
     }
-  }, [squad?.canonicalRoute, squad?.squadId, location.coordinates, isHost, autoStartNavigationOnMount]);
+  }, [squad?.canonicalRoute, squad?.squadId, location.coordinates, isHost, autoStartNavigationOnMount, squad?.settings?.navigationStarted]);
+
+  // Sync member navigation state with host's navigationStarted setting
+  useEffect(() => {
+    if (!isHost && squad) {
+      if (squad.settings?.navigationStarted) {
+        if (!isNavigating) {
+          setIsNavigating(true);
+          setIsMobileSheetExpanded(false);
+        }
+      } else {
+        if (isNavigating) {
+          setIsNavigating(false);
+          setIsSquadPanelOpen(true);
+        }
+      }
+    }
+  }, [isHost, squad?.settings?.navigationStarted]);
 
 
   // Turn-by-turn engine
@@ -197,12 +223,60 @@ const NavigationCockpit: React.FC<{
   const handleStartNavigation = () => {
     if (!activeRoute) return;
     setIsNavigating(true);
-    setIsSquadPanelOpen(false);
+    setIsMobileSheetExpanded(false);
+    if (squad && isHost) {
+      updateSettings({ navigationStarted: true });
+    }
   };
 
   // Exit Navigation
   const handleExitNavigation = () => {
     setIsNavigating(false);
+    setIsSquadPanelOpen(true);
+    setIsMobileSheetExpanded(false);
+    if (squad && isHost) {
+      updateSettings({ navigationStarted: false });
+    }
+  };
+
+  // Google Maps-Style Meeting Point Handlers
+  const handleStartSelectingMeetingPoint = () => {
+    setIsSelectingMeetingPoint(true);
+    setSelectedMeetingCoords(null);
+    setSelectedMeetingName('');
+    setIsSquadPanelOpen(false);
+    setIsMobileSheetExpanded(false);
+  };
+
+  const handleCancelMeetingPoint = () => {
+    setIsSelectingMeetingPoint(false);
+    setSelectedMeetingCoords(null);
+    setSelectedMeetingName('');
+    setIsSquadPanelOpen(true);
+  };
+
+  const handleConfirmMeetingPoint = async () => {
+    if (!selectedMeetingCoords) return;
+    const finalName = selectedMeetingName.trim() || 'Regroup Point';
+    await proposeRegroup(finalName, selectedMeetingCoords);
+    setIsSelectingMeetingPoint(false);
+    setSelectedMeetingCoords(null);
+    setSelectedMeetingName('');
+    setIsSquadPanelOpen(true);
+  };
+
+  const handleMapClick = async (coords: LatLng) => {
+    if (isSelectingMeetingPoint) {
+      setSelectedMeetingCoords(coords);
+      setSelectedMeetingName('Locating address...');
+      try {
+        const address = await nominatimPlacesProvider.reverseGeocode(coords);
+        const cleanName = address ? address.split(',').slice(0, 3).join(', ') : 'Selected Meeting Point';
+        setSelectedMeetingName(cleanName);
+      } catch {
+        setSelectedMeetingName('Selected Meeting Point');
+      }
+    }
   };
 
   // Locate Member on Map
@@ -307,8 +381,12 @@ const NavigationCockpit: React.FC<{
         }
         destinationName={squad?.destination || selectedDestination?.name}
         regroupPoint={activeRegroupPoint}
+        previewPoint={selectedMeetingCoords}
+        previewPointName={selectedMeetingName}
+        centerPoint={mapCenterPoint}
         focusedMemberId={focusedMemberId}
         onMemberClick={handleLocateMember}
+        onMapClick={handleMapClick}
         isNavigating={isNavigating}
       />
 
@@ -326,27 +404,34 @@ const NavigationCockpit: React.FC<{
           voiceMuted={turnByTurn.voiceMuted}
           onToggleVoice={turnByTurn.toggleVoiceMute}
           onExitNavigation={handleExitNavigation}
+          squadMemberCount={squad ? members.length : undefined}
+          isSquadOpen={isSquadPanelOpen || isMobileSheetExpanded}
+          onToggleSquad={() => {
+            setIsSquadPanelOpen((prev) => !prev);
+            setIsMobileSheetExpanded((prev) => !prev);
+          }}
         />
       )}
 
-      {/* Top Search Bar & Header (When NOT Navigating) */}
-      {!isNavigating && (
+      {/* Top Search Bar & Header (When NOT Navigating and NOT selecting meeting point) */}
+      {!isNavigating && !isSelectingMeetingPoint && (
         <div
           style={{
             position: 'absolute',
             top: '16px',
-            left: '16px',
-            right: '16px',
+            left: '12px',
+            right: '12px',
             zIndex: 'var(--z-controls)',
             maxWidth: '560px',
             margin: '0 auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px'
+            gap: '8px',
+            boxSizing: 'border-box'
           }}
         >
           {/* Top Bar with Home Button, Search, and Squad Indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
             <button
               className="btn-icon"
               onClick={onGoHome}
@@ -356,7 +441,7 @@ const NavigationCockpit: React.FC<{
               <Home size={20} color="var(--accent-cyan)" />
             </button>
 
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <PlaceSearchBox
                 userLocation={location.coordinates}
                 onSelectPlace={handleSelectPlace}
@@ -552,21 +637,21 @@ const NavigationCockpit: React.FC<{
             isSharingPaused={location.isSharingPaused}
             onToggleSharing={location.togglePauseSharing}
             onLocateMember={handleLocateMember}
-            onProposeRegroup={() => setIsRegroupOpen(true)}
+            onProposeRegroup={handleStartSelectingMeetingPoint}
             onOpenSettings={() => setIsHostSettingsOpen(true)}
           />
         </div>
       )}
 
       {/* MOBILE BOTTOM SHEET: Squad Members & Distances (Mobile Only) */}
-      {squad && window.innerWidth <= 768 && !isNavigating && (
+      {squad && window.innerWidth <= 768 && (!isNavigating || isMobileSheetExpanded) && (
         <div
           className="glass-panel"
           style={{
             position: 'absolute',
             left: '12px',
             right: '12px',
-            bottom: '16px',
+            bottom: isNavigating ? '96px' : '16px',
             zIndex: 'var(--z-bottom-sheet)',
             maxHeight: isMobileSheetExpanded ? '75vh' : '150px',
             transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -612,11 +697,152 @@ const NavigationCockpit: React.FC<{
               isSharingPaused={location.isSharingPaused}
               onToggleSharing={location.togglePauseSharing}
               onLocateMember={handleLocateMember}
-              onProposeRegroup={() => setIsRegroupOpen(true)}
+              onProposeRegroup={handleStartSelectingMeetingPoint}
               onOpenSettings={() => setIsHostSettingsOpen(true)}
             />
           </div>
         </div>
+      )}
+
+      {/* "LET'S MEET HERE" (GOOGLE MAPS STYLE SELECTION OVERLAYS) */}
+      {isSelectingMeetingPoint && (
+        <>
+          {/* Top Instruction & Place Search Banner */}
+          <div
+            className="glass-panel animate-slide-down"
+            style={{
+              position: 'absolute',
+              top: '16px',
+              left: '12px',
+              right: '12px',
+              maxWidth: '560px',
+              margin: '0 auto',
+              zIndex: 'var(--z-modal)',
+              padding: '12px 14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              backgroundColor: 'rgba(17, 24, 39, 0.96)',
+              border: '1.5px solid var(--accent-amber)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <MapPin size={20} color="var(--accent-amber)" />
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF' }}>
+                    Set Meeting Point
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    Search a spot or tap anywhere on the map
+                  </div>
+                </div>
+              </div>
+              <button
+                className="btn-secondary"
+                onClick={handleCancelMeetingPoint}
+                style={{ padding: '6px 12px', fontSize: '12px', flexShrink: 0 }}
+              >
+                Cancel
+              </button>
+            </div>
+
+            {/* Place Search with Category Filters (Food, Fuel, Hotel, Cafe) */}
+            <div style={{ width: '100%' }}>
+              <PlaceSearchBox
+                userLocation={location.coordinates}
+                onSelectPlace={(place) => {
+                  setSelectedMeetingCoords(place.coordinates);
+                  setSelectedMeetingName(place.name || place.address || 'Selected Location');
+                  setMapCenterPoint(place.coordinates);
+                }}
+                placeholder="Search McDonald's, petrol pump, hotel, temple..."
+                showCategories={true}
+                isSquadActive={false}
+              />
+            </div>
+          </div>
+
+          {/* Bottom Confirmation Card (When point is tapped) */}
+          {selectedMeetingCoords && (
+            <div
+              className="glass-panel animate-slide-up"
+              style={{
+                position: 'absolute',
+                bottom: '24px',
+                left: '12px',
+                right: '12px',
+                maxWidth: '440px',
+                margin: '0 auto',
+                zIndex: 'var(--z-modal)',
+                padding: '16px 20px',
+                backgroundColor: 'var(--bg-secondary)',
+                border: '1.5px solid var(--accent-amber)',
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.8)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(255, 179, 0, 0.15)',
+                    border: '1.5px solid var(--accent-amber)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <MapPin size={22} color="var(--accent-amber)" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent-amber)', textTransform: 'uppercase' }}>
+                    Regroup Location
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px', wordBreak: 'break-word' }}>
+                    {selectedMeetingName || 'Selected Location'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {selectedMeetingCoords.lat.toFixed(5)}, {selectedMeetingCoords.lng.toFixed(5)}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    setSelectedMeetingCoords(null);
+                    setSelectedMeetingName('');
+                  }}
+                  style={{ flex: 1, padding: '10px', fontSize: '13px' }}
+                >
+                  Reposition
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={handleConfirmMeetingPoint}
+                  style={{
+                    flex: 2,
+                    padding: '10px',
+                    fontSize: '13px',
+                    background: 'linear-gradient(135deg, #FFB300, #FF8F00)',
+                    color: '#0A0E17',
+                    fontWeight: 800
+                  }}
+                >
+                  Set Meeting Point
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* BOTTOM RIGHT FLOATING BUTTONS: Simulator Mode & Start Nav */}
@@ -774,7 +1000,7 @@ export default function App() {
             <JoinSquadPage
               squadId={targetSquadId}
               onJoinSuccess={() => {
-                setAutoStartNavOnCockpit(true);
+                setAutoStartNavOnCockpit(false);
                 setCurrentView('map');
               }}
               onCancel={() => {

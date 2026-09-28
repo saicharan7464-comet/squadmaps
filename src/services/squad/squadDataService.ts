@@ -25,7 +25,7 @@ const mapSquadToRow = (squad: Squad) => ({
   canonical_route: cleanObject(squad.canonicalRoute),
   settings: cleanObject(squad.settings),
   active_regroup_point: squad.activeRegroupPoint ? cleanObject(squad.activeRegroupPoint) : null,
-  created_at_ms: squad.createdAt || Date.now()
+  created_at_ms: squad.createdAt ? Math.round(squad.createdAt) : Date.now()
 });
 
 const mapSquadRow = (row: any): Squad => ({
@@ -72,10 +72,17 @@ const mapMemberToRow = (squadId: string, member: SquadMember) => ({
   speed: member.speed,
   heading: member.heading,
   accuracy: member.accuracy,
-  last_updated: member.lastUpdated || Date.now(),
+  last_updated: member.lastUpdated ? Math.round(member.lastUpdated) : Date.now(),
   eta: member.eta,
-  eta_seconds: member.etaSeconds,
-  distance_remaining: member.distanceRemaining,
+  // Database column 'eta_seconds' in public.squad_members is integer.
+  // Route duration from routing engines can contain decimal seconds (e.g. 105406.8s).
+  // Explicitly convert using Math.round() at the DB boundary to satisfy PostgreSQL type integer constraint.
+  eta_seconds: typeof member.etaSeconds === 'number' && !isNaN(member.etaSeconds)
+    ? Math.round(member.etaSeconds)
+    : 0,
+  distance_remaining: typeof member.distanceRemaining === 'number' && !isNaN(member.distanceRemaining)
+    ? Math.round(member.distanceRemaining)
+    : 0,
   status: member.status,
   online: member.online,
   vehicle_mode: member.vehicleMode,
@@ -264,7 +271,12 @@ export class SquadDataService {
     callback: (squad: Squad | null) => void
   ): () => void {
     // Local subscription
-    const unsubLocal = localSyncService.subscribeToSquad(squadId, callback);
+    const unsubLocal = localSyncService.subscribeToSquad(squadId, (localSquad) => {
+      // If Supabase is configured, do not emit null from local storage to avoid wiping active remote state
+      if (!isSupabaseConfigured() || localSquad) {
+        callback(localSquad);
+      }
+    });
     let channel: any = null;
 
     if (isSupabaseConfigured() && supabase) {
@@ -272,7 +284,10 @@ export class SquadDataService {
         // Initial fetch
         this.getSquad(squadId)
           .then((remote) => {
-            if (remote) callback(remote);
+            if (remote) {
+              localSyncService.saveSquad(remote);
+              callback(remote);
+            }
           })
           .catch(() => {});
 
@@ -291,7 +306,9 @@ export class SquadDataService {
               if (payload.eventType === 'DELETE') {
                 callback(null);
               } else if (payload.new) {
-                callback(mapSquadRow(payload.new));
+                const updated = mapSquadRow(payload.new);
+                localSyncService.saveSquad(updated);
+                callback(updated);
               }
             }
           )
@@ -343,7 +360,11 @@ export class SquadDataService {
   // UPDATE MEMBER (WITH 10-SECOND GPS WRITE THROTTLING)
   // ==========================================================
 
-  async updateMember(squadId: string, member: SquadMember): Promise<void> {
+  async updateMember(
+    squadId: string,
+    member: SquadMember,
+    forceImmediate = false
+  ): Promise<void> {
     // 1. ALWAYS update local state immediately
     localSyncService.updateMember(squadId, member);
 
@@ -357,9 +378,14 @@ export class SquadDataService {
     const lastUpdate = this.lastMemberSupabaseUpdate.get(key) || 0;
     const elapsed = now - lastUpdate;
 
-    // CASE 1: Cooldown elapsed -> write immediately
-    if (elapsed >= this.SUPABASE_UPDATE_INTERVAL) {
-      await this.writeMemberToSupabase(squadId, member, key);
+    // CASE 1: Force immediate (joining/creating squad) or cooldown elapsed -> write immediately
+    if (forceImmediate || elapsed >= this.SUPABASE_UPDATE_INTERVAL) {
+      const timer = this.memberUpdateTimers.get(key);
+      if (timer) {
+        clearTimeout(timer);
+        this.memberUpdateTimers.delete(key);
+      }
+      await this.writeMemberToSupabase(squadId, member, key, forceImmediate);
       return;
     }
 
@@ -368,7 +394,7 @@ export class SquadDataService {
       const remaining = this.SUPABASE_UPDATE_INTERVAL - elapsed;
       const timer = setTimeout(async () => {
         this.memberUpdateTimers.delete(key);
-        await this.writeMemberToSupabase(squadId, member, key);
+        await this.writeMemberToSupabase(squadId, member, key, false);
       }, remaining);
 
       this.memberUpdateTimers.set(key, timer);
@@ -378,7 +404,8 @@ export class SquadDataService {
   private async writeMemberToSupabase(
     squadId: string,
     member: SquadMember,
-    key: string
+    key: string,
+    mustVerify = false
   ): Promise<void> {
     if (!supabase) return;
 
@@ -388,14 +415,25 @@ export class SquadDataService {
       const row = mapMemberToRow(squadId, member);
       const query = supabase
         .from('squad_members')
-        .upsert(row, { onConflict: 'squad_id,user_id' });
+        .upsert(row, { onConflict: 'squad_id,user_id' })
+        .select('squad_id,user_id')
+        .single();
 
-      const { error } = await withTimeout(query, 5000);
+      const { data, error } = await withTimeout(query, 5000);
       if (error) {
         console.warn('Supabase updateMember error:', error);
+        if (mustVerify) {
+          throw error;
+        }
+      }
+      if (mustVerify && (!data || data.squad_id !== squadId)) {
+        throw new Error(`Database did not acknowledge persistence of squad member ${member.userId}`);
       }
     } catch (err) {
       console.warn('Supabase updateMember timeout/error:', err);
+      if (mustVerify) {
+        throw err;
+      }
     }
   }
 
@@ -440,17 +478,39 @@ export class SquadDataService {
     squadId: string,
     callback: (members: SquadMember[]) => void
   ): () => void {
-    const unsubLocal = localSyncService.subscribeToMembers(squadId, callback);
     let channel: any = null;
     const membersCache = new Map<string, SquadMember>();
 
+    // Subscribe to local sync
+    const unsubLocal = localSyncService.subscribeToMembers(squadId, (localMembers) => {
+      // If Supabase is not configured, local is source of truth
+      if (!isSupabaseConfigured() || !supabase) {
+        callback(localMembers);
+        return;
+      }
+      // When Supabase is configured: seed membersCache if it is empty, but do not drop existing remote members
+      if (localMembers && localMembers.length > 0) {
+        let changed = false;
+        localMembers.forEach((lm) => {
+          if (!membersCache.has(lm.userId)) {
+            membersCache.set(lm.userId, lm);
+            changed = true;
+          }
+        });
+        if (changed) {
+          callback(Array.from(membersCache.values()));
+        }
+      }
+    });
+
     if (isSupabaseConfigured() && supabase) {
       try {
-        // Initial fetch
+        // Initial fetch from Supabase
         this.getMembers(squadId)
           .then((initialList) => {
             if (initialList && initialList.length > 0) {
               initialList.forEach((m) => membersCache.set(m.userId, m));
+              localSyncService.saveMembers(squadId, Array.from(membersCache.values()));
               callback(Array.from(membersCache.values()));
             }
           })
@@ -477,10 +537,16 @@ export class SquadDataService {
                 const member = mapMemberRow(payload.new);
                 membersCache.set(member.userId, member);
               }
-              callback(Array.from(membersCache.values()));
+              const memberList = Array.from(membersCache.values());
+              localSyncService.saveMembers(squadId, memberList);
+              callback(memberList);
             }
           )
-          .subscribe();
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log(`Subscribed to Supabase squad_members changes for ${squadId}`);
+            }
+          });
       } catch (err) {
         console.warn('Supabase subscribeToMembers init error:', err);
       }

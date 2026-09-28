@@ -10,7 +10,8 @@ import {
   VolumeX,
   X,
   AlertTriangle,
-  Compass
+  Compass,
+  Users
 } from 'lucide-react';
 
 interface TurnByTurnHUDProps {
@@ -25,6 +26,9 @@ interface TurnByTurnHUDProps {
   voiceMuted: boolean;
   onToggleVoice: () => void;
   onExitNavigation: () => void;
+  squadMemberCount?: number;
+  onToggleSquad?: () => void;
+  isSquadOpen?: boolean;
 }
 
 export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
@@ -38,7 +42,10 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
   isOffRoute,
   voiceMuted,
   onToggleVoice,
-  onExitNavigation
+  onExitNavigation,
+  squadMemberCount,
+  onToggleSquad,
+  isSquadOpen = false
 }) => {
   // Maneuver Icon Helper
   const renderManeuverIcon = (step: RouteStep | null) => {
@@ -236,21 +243,47 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
             </div>
           </div>
 
-          {/* Exit Navigation Button */}
-          <button
-            onClick={onExitNavigation}
-            className="btn-secondary"
-            style={{
-              borderRadius: 'var(--radius-full)',
-              padding: '10px 18px',
-              backgroundColor: 'rgba(255, 61, 113, 0.15)',
-              borderColor: 'var(--accent-red)',
-              color: 'var(--accent-red)'
-            }}
-          >
-            <X size={18} />
-            <span style={{ fontWeight: 700 }}>Exit</span>
-          </button>
+          {/* Right Action Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onToggleSquad && (
+              <button
+                onClick={onToggleSquad}
+                className="btn-secondary"
+                title="View squad members and details"
+                style={{
+                  borderRadius: 'var(--radius-full)',
+                  padding: '10px 14px',
+                  backgroundColor: isSquadOpen ? 'rgba(0, 240, 255, 0.2)' : 'var(--bg-glass)',
+                  borderColor: isSquadOpen ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                  color: isSquadOpen ? 'var(--accent-cyan)' : 'var(--text-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Users size={18} color="var(--accent-cyan)" />
+                <span style={{ fontWeight: 700, fontSize: '13px' }}>
+                  Squad {squadMemberCount !== undefined ? `(${squadMemberCount})` : ''}
+                </span>
+              </button>
+            )}
+
+            {/* Exit Navigation Button */}
+            <button
+              onClick={onExitNavigation}
+              className="btn-secondary"
+              style={{
+                borderRadius: 'var(--radius-full)',
+                padding: '10px 18px',
+                backgroundColor: 'rgba(255, 61, 113, 0.15)',
+                borderColor: 'var(--accent-red)',
+                color: 'var(--accent-red)'
+              }}
+            >
+              <X size={18} />
+              <span style={{ fontWeight: 700 }}>Exit</span>
+            </button>
+          </div>
         </div>
       </div>
     </>

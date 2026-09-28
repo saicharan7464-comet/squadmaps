@@ -15,6 +15,9 @@ interface MapViewProps {
   destination: LatLng | null;
   destinationName?: string;
   regroupPoint?: RegroupPoint | null;
+  previewPoint?: LatLng | null;
+  previewPointName?: string;
+  centerPoint?: LatLng | null;
   suggestedPlaces?: Place[];
   focusedMemberId?: string | null;
   onMemberClick?: (member: SquadMember) => void;
@@ -31,6 +34,9 @@ export const MapView: React.FC<MapViewProps> = ({
   destination,
   destinationName,
   regroupPoint,
+  previewPoint,
+  previewPointName,
+  centerPoint,
   suggestedPlaces = [],
   focusedMemberId,
   onMemberClick,
@@ -44,7 +50,12 @@ export const MapView: React.FC<MapViewProps> = ({
   const memberMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const destMarkerRef = useRef<L.Marker | null>(null);
   const regroupMarkerRef = useRef<L.Marker | null>(null);
+  const previewMarkerRef = useRef<L.Marker | null>(null);
   const placeMarkersRef = useRef<L.Marker[]>([]);
+  const onMapClickRef = useRef(onMapClick);
+  useEffect(() => {
+    onMapClickRef.current = onMapClick;
+  });
 
   const [mapLayer, setMapLayer] = useState<'dark' | 'streets' | 'satellite'>('dark');
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -97,8 +108,8 @@ export const MapView: React.FC<MapViewProps> = ({
     mapInstanceRef.current = map;
 
     map.on('click', (e: L.LeafletMouseEvent) => {
-      if (onMapClick) {
-        onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
+      if (onMapClickRef.current) {
+        onMapClickRef.current({ lat: e.latlng.lat, lng: e.latlng.lng });
       }
     });
 
@@ -257,6 +268,15 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   }, [focusedMemberId, squadMembers]);
 
+  // Center map on searched place or selected point when centerPoint changes
+  useEffect(() => {
+    if (!centerPoint || !mapInstanceRef.current) return;
+    mapInstanceRef.current.flyTo([centerPoint.lat, centerPoint.lng], 16, {
+      animate: true,
+      duration: 1.0
+    });
+  }, [centerPoint]);
+
   // Update Route Polyline (Shared Canonical Path)
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -375,6 +395,42 @@ export const MapView: React.FC<MapViewProps> = ({
       }).addTo(map);
     }
   }, [regroupPoint]);
+
+  // Update Preview Meeting Point Marker
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (previewMarkerRef.current) {
+      map.removeLayer(previewMarkerRef.current);
+      previewMarkerRef.current = null;
+    }
+
+    if (previewPoint) {
+      const previewHtml = `
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+          <div style="background: #FFB300; color: #0A0E17; font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 6px; white-space: nowrap; margin-bottom: 4px; box-shadow: 0 4px 14px rgba(255, 179, 0, 0.6); border: 1.5px solid #FFFFFF;">
+            📍 ${previewPointName || 'Selected Meeting Point'}
+          </div>
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: #FFB300; border: 3px solid #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(255, 179, 0, 0.9);">
+            <span style="font-size: 18px;">📍</span>
+          </div>
+        </div>
+      `;
+
+      const previewIcon = L.divIcon({
+        html: previewHtml,
+        className: 'preview-meeting-marker',
+        iconSize: [160, 56],
+        iconAnchor: [80, 50]
+      });
+
+      previewMarkerRef.current = L.marker([previewPoint.lat, previewPoint.lng], {
+        icon: previewIcon,
+        zIndexOffset: 1200
+      }).addTo(map);
+    }
+  }, [previewPoint, previewPointName]);
 
   // Update Suggested Places Markers
   useEffect(() => {
