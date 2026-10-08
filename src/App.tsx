@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './features/auth/AuthContext';
+import { AuthScreen } from './components/auth/AuthScreen';
+import { AuthLoadingScreen } from './components/auth/AuthLoadingScreen';
+import { UserBadge } from './components/auth/UserBadge';
 import { SquadProvider, useSquad } from './features/squad/SquadContext';
 import { useLocationTracker } from './features/tracking/useLocationTracker';
 import { useTurnByTurn } from './features/navigation/useTurnByTurn';
@@ -555,6 +558,8 @@ const NavigationCockpit: React.FC<{
                 }
               />
             </div>
+
+            <UserBadge compact />
 
             {squad && (
               <button
@@ -1292,10 +1297,12 @@ const NavigationCockpit: React.FC<{
   );
 };
 
-export default function App() {
+const AppContent: React.FC = () => {
+  const { user, loading, isRecoveryMode } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [targetSquadId, setTargetSquadId] = useState<string | null>(null);
   const [openCreateOnCockpit, setOpenCreateOnCockpit] = useState(false);
+  const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
 
   // Check URL on load for invite links (?join=SQ-1234, /join/SQ-1234, #join=SQ-1234)
   useEffect(() => {
@@ -1305,8 +1312,6 @@ export default function App() {
       setCurrentView('join');
     }
   }, []);
-
-  const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
 
   const handleOpenMap = () => {
     setOpenCreateOnCockpit(false);
@@ -1325,51 +1330,96 @@ export default function App() {
     setCurrentView('join');
   };
 
+  // 1. Session check loading screen (prevents flicker)
+  if (loading) {
+    return <AuthLoadingScreen />;
+  }
+
+  // 2. Unauthenticated user: show Authentication Screen
+  if (!user && !isRecoveryMode) {
+    return (
+      <AuthScreen
+        onSuccess={() => {
+          if (targetSquadId) {
+            setCurrentView('join');
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      {/* If URL contains recovery token or recovery mode triggered */}
+      {isRecoveryMode && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(10, 14, 23, 0.94)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            overflowY: 'auto'
+          }}
+        >
+          <AuthScreen initialView="reset_password" />
+        </div>
+      )}
+
+      {currentView === 'home' && (
+        <HomePage
+          onOpenMap={handleOpenMap}
+          onStartNavigating={handleOpenMap}
+          onCreateSquad={handleCreateSquad}
+          onJoinSquad={handleJoinSquadId}
+        />
+      )}
+
+      {currentView === 'join' && targetSquadId && (
+        <JoinSquadPage
+          squadId={targetSquadId}
+          onJoinSuccess={() => {
+            setAutoStartNavOnCockpit(false);
+            setCurrentView('map');
+          }}
+          onCancel={() => {
+            setCurrentView('home');
+          }}
+          onRequestLocation={async () => {
+            if ('geolocation' in navigator) {
+              return new Promise((resolve) => {
+                navigator.geolocation.getCurrentPosition(
+                  () => resolve(true),
+                  () => resolve(false)
+                );
+              });
+            }
+            return false;
+          }}
+        />
+      )}
+
+      {currentView === 'map' && (
+        <NavigationCockpit
+          onGoHome={() => setCurrentView('home')}
+          openCreateSquadOnMount={openCreateOnCockpit}
+          autoStartNavigationOnMount={autoStartNavOnCockpit}
+        />
+      )}
+    </div>
+  );
+};
+
+export default function App() {
   return (
     <AuthProvider>
       <SquadProvider userCoords={null}>
-        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-          {currentView === 'home' && (
-            <HomePage
-              onOpenMap={handleOpenMap}
-              onStartNavigating={handleOpenMap}
-              onCreateSquad={handleCreateSquad}
-              onJoinSquad={handleJoinSquadId}
-            />
-          )}
-
-          {currentView === 'join' && targetSquadId && (
-            <JoinSquadPage
-              squadId={targetSquadId}
-              onJoinSuccess={() => {
-                setAutoStartNavOnCockpit(false);
-                setCurrentView('map');
-              }}
-              onCancel={() => {
-                setCurrentView('home');
-              }}
-              onRequestLocation={async () => {
-                if ('geolocation' in navigator) {
-                  return new Promise((resolve) => {
-                    navigator.geolocation.getCurrentPosition(
-                      () => resolve(true),
-                      () => resolve(false)
-                    );
-                  });
-                }
-                return false;
-              }}
-            />
-          )}
-
-          {currentView === 'map' && (
-            <NavigationCockpit
-              onGoHome={() => setCurrentView('home')}
-              openCreateSquadOnMount={openCreateOnCockpit}
-              autoStartNavigationOnMount={autoStartNavOnCockpit}
-            />
-          )}
-        </div>
+        <AppContent />
       </SquadProvider>
     </AuthProvider>
   );

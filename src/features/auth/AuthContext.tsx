@@ -1,17 +1,40 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../../types/user';
 import { supabase, isSupabaseConfigured } from '../../services/supabase/supabaseClient';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  loginAsGuest: (customName?: string) => Promise<UserProfile>;
-  loginWithGoogle: () => Promise<void>;
+  isAuthenticated: boolean;
+  isGuest: boolean;
+  authError: string | null;
+  isRecoveryMode: boolean;
+  clearAuthError: () => void;
+  setIsRecoveryMode: (value: boolean) => void;
+
+  // Authentication Actions
+  login: (email: string, pass: string) => Promise<void>;
+  signUp: (email: string, pass: string, name?: string) => Promise<{ requiresVerification?: boolean }>;
+  continueAsGuest: (customName?: string) => Promise<UserProfile>;
+  logout: () => Promise<void>;
+
+  // Password Recovery
+  requestPasswordReset: (email: string) => Promise<void>;
+  verifyRecoveryCode: (email: string, token: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
+
+  // Guest Upgrade
+  upgradeGuestAccount: (email: string, pass: string, name?: string) => Promise<{ requiresVerification?: boolean }>;
+
+  // Profile
+  updateProfileName: (name: string) => void;
+
+  // Backwards-compatible aliases
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, name: string) => Promise<void>;
-  logout: () => Promise<void>;
-  updateProfileName: (name: string) => void;
+  loginAsGuest: (customName?: string) => Promise<UserProfile>;
+  loginWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,9 +68,44 @@ const getAvatarUrl = (seed: string): string => {
   return `https://api.dicebear.com/7.x/bottts/svg?seed=${seed}`;
 };
 
+// Normalize and map raw Supabase error messages to friendly, non-leaking user messages
+export const formatAuthErrorMessage = (err: any): string => {
+  if (!err) return 'An unexpected error occurred. Please try again.';
+  const msg: string = (err.message || err.error_description || String(err)).toLowerCase();
+
+  if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
+    return 'Incorrect email or password. Please verify your credentials and try again.';
+  }
+  if (msg.includes('user already registered') || msg.includes('already exists') || msg.includes('email address already in use')) {
+    return 'An account with this email address already exists. Please log in instead.';
+  }
+  if (msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('over_email_send_rate_limit')) {
+    return 'Too many attempts. For security, please wait a minute before trying again.';
+  }
+  if (msg.includes('token has expired') || msg.includes('otp has expired') || msg.includes('expired')) {
+    return 'This verification code has expired. Please request a new code.';
+  }
+  if (msg.includes('invalid token') || msg.includes('invalid otp') || msg.includes('token is invalid') || msg.includes('bad code')) {
+    return 'Invalid verification code. Please check the code in your email and try again.';
+  }
+  if (msg.includes('password should be at least') || msg.includes('weak password')) {
+    return 'Password must be at least 6 characters long and include numbers or symbols.';
+  }
+  if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('enotfound')) {
+    return 'Network connection issue. Please check your internet connection.';
+  }
+  return err.message || 'Authentication request failed. Please check your details and try again.';
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isRecoveryMode, setIsRecoveryMode] = useState<boolean>(false);
+
+  const clearAuthError = useCallback(() => {
+    setAuthError(null);
+  }, []);
 
   // Sync profile to Supabase public.profiles table
   const syncProfileToSupabase = async (profile: UserProfile): Promise<void> => {
@@ -60,11 +118,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar: profile.avatar,
         color: profile.color,
         is_guest: profile.isGuest,
-        created_at: profile.createdAt,
+        created_at: profile.createdAt ? new Date(profile.createdAt).toISOString() : new Date().toISOString(),
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });
     } catch (err) {
-      console.warn('Failed to sync profile to Supabase:', err);
+      console.warn('[AuthContext] Failed to sync profile to Supabase:', err);
     }
   };
 
@@ -91,14 +149,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
     } catch (err) {
-      console.warn('Failed to fetch profile from Supabase:', err);
+      console.warn('[AuthContext] Failed to fetch profile from Supabase:', err);
     }
     return null;
   };
 
   // Convert a Supabase user into our domain UserProfile interface
   const mapSupabaseUserToProfile = async (sbUser: SupabaseUser): Promise<UserProfile> => {
-    // Check if we already have a cached profile for this user ID in localStorage
     const savedRaw = localStorage.getItem('squadnav_user');
     let cached: UserProfile | null = null;
     if (savedRaw) {
@@ -108,7 +165,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {}
     }
 
-    // Check remote profile table for stored custom name/color/avatar
     const remoteProfile = await fetchProfileFromSupabase(sbUser.id);
 
     const name =
@@ -154,9 +210,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return profile;
   };
 
-  const createGuestUser = (customName?: string): UserProfile => {
-    const randomName = customName || GUEST_NAMES[Math.floor(Math.random() * GUEST_NAMES.length)];
-    const id = `guest_${Math.random().toString(36).substring(2, 9)}`;
+  // Helper to create a guest user profile
+  const createGuestProfile = (customName?: string, explicitId?: string): UserProfile => {
+    const randomName = customName?.trim() || GUEST_NAMES[Math.floor(Math.random() * GUEST_NAMES.length)];
+    const id = explicitId || `guest_${Math.random().toString(36).substring(2, 9)}`;
     const color = SQUAD_COLORS[Math.floor(Math.random() * SQUAD_COLORS.length)];
     const profile: UserProfile = {
       id,
@@ -172,30 +229,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return profile;
   };
 
-  const checkLocalUser = () => {
-    const saved = localStorage.getItem('squadnav_user');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setUser(parsed);
-      } catch {
-        createGuestUser();
-      }
-    } else {
-      createGuestUser();
-    }
-  };
-
-  // Initialize auth state and subscribe to Supabase Auth changes
+  // Initialize Auth on app start
   useEffect(() => {
     let mounted = true;
 
     const initializeAuth = async () => {
+      // 1. Check URL for password reset indicators (#type=recovery or ?type=recovery or accessToken)
+      const fullUrl = window.location.href;
+      if (
+        fullUrl.includes('type=recovery') ||
+        fullUrl.includes('reset-password') ||
+        fullUrl.includes('access_token') && fullUrl.includes('recovery')
+      ) {
+        setIsRecoveryMode(true);
+      }
+
+      // 2. Check Supabase session first
       if (isSupabaseConfigured() && supabase) {
         try {
           const { data: { session }, error } = await supabase.auth.getSession();
           if (error) {
-            console.warn('Supabase getSession error:', error);
+            console.warn('[AuthContext] Supabase getSession warning:', error.message);
           }
           if (session?.user && mounted) {
             const profile = await mapSupabaseUserToProfile(session.user);
@@ -207,12 +261,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
         } catch (err) {
-          console.warn('Failed to get initial Supabase session:', err);
+          console.warn('[AuthContext] Failed to get initial Supabase session:', err);
         }
       }
 
+      // 3. If no active Supabase session, check local storage for an existing guest session
+      const saved = localStorage.getItem('squadnav_user');
+      if (saved && mounted) {
+        try {
+          const parsed: UserProfile = JSON.parse(saved);
+          if (parsed && parsed.id) {
+            // If parsed user was a guest, restore guest session
+            if (parsed.isGuest) {
+              setUser(parsed);
+              setLoading(false);
+              return;
+            }
+            // If it was marked registered but Supabase has no session (expired/unconfigured)
+            // If Supabase is unconfigured, keep offline mock session; otherwise require login
+            if (!isSupabaseConfigured()) {
+              setUser(parsed);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch {
+          localStorage.removeItem('squadnav_user');
+        }
+      }
+
+      // 4. No session exists: set user to null so Authentication Screen is presented
       if (mounted) {
-        checkLocalUser();
+        setUser(null);
         setLoading(false);
       }
     };
@@ -225,6 +305,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (isSupabaseConfigured() && supabase) {
       const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (!mounted) return;
+
+        if (event === 'PASSWORD_RECOVERY') {
+          setIsRecoveryMode(true);
+        }
 
         if (session?.user) {
           if (
@@ -242,8 +326,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         } else if (event === 'SIGNED_OUT') {
           if (mounted) {
-            localStorage.removeItem('squadnav_user');
-            createGuestUser();
+            // Keep guest session if it's explicitly guest, else clear
+            const saved = localStorage.getItem('squadnav_user');
+            let wasGuest = false;
+            if (saved) {
+              try {
+                wasGuest = JSON.parse(saved).isGuest;
+              } catch {}
+            }
+            if (!wasGuest) {
+              localStorage.removeItem('squadnav_user');
+              setUser(null);
+            }
             setLoading(false);
           }
         }
@@ -257,55 +351,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // 1. Guest Login (Supabase Anonymous Sign-In with local fallback)
-  const loginAsGuest = async (customName?: string): Promise<UserProfile> => {
+  // 1. Continue as Guest
+  const continueAsGuest = async (customName?: string): Promise<UserProfile> => {
+    setAuthError(null);
     if (isSupabaseConfigured() && supabase) {
       try {
         const { data, error } = await supabase.auth.signInAnonymously();
-        if (error) {
-          console.warn('Supabase anonymous sign-in error, falling back to local guest:', error.message);
-        } else if (data.user) {
-          const name = customName || GUEST_NAMES[Math.floor(Math.random() * GUEST_NAMES.length)];
-          const profile: UserProfile = {
-            id: data.user.id,
-            name,
-            avatar: getAvatarUrl(data.user.id),
-            color: getColorForId(data.user.id),
-            isGuest: true,
-            createdAt: Date.now()
-          };
-          setUser(profile);
-          localStorage.setItem('squadnav_user', JSON.stringify(profile));
-          syncProfileToSupabase(profile).catch(() => {});
+        if (!error && data?.user) {
+          const profile = createGuestProfile(customName, data.user.id);
           return profile;
         }
       } catch (err) {
-        console.warn('Supabase anonymous sign-in failed, using local guest:', err);
+        console.warn('[AuthContext] Supabase anonymous sign-in fallback to local:', err);
       }
     }
-    return createGuestUser(customName);
+    return createGuestProfile(customName);
   };
 
-  // 2. Google OAuth Login
-  const loginWithGoogle = async (): Promise<void> => {
+  // 2. Login with Email & Password
+  const login = async (email: string, pass: string): Promise<void> => {
+    setAuthError(null);
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !pass) {
+      throw new Error('Please enter both email and password.');
+    }
+
     if (isSupabaseConfigured() && supabase) {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: pass
       });
+
       if (error) {
-        console.error('Google OAuth sign-in error:', error.message);
-        throw error;
+        const friendlyMessage = formatAuthErrorMessage(error);
+        setAuthError(friendlyMessage);
+        throw new Error(friendlyMessage);
+      }
+
+      if (data.user) {
+        const profile = await mapSupabaseUserToProfile(data.user);
+        setUser(profile);
+        syncProfileToSupabase(profile).catch(() => {});
       }
     } else {
-      // Mock Google Login for offline development
-      const id = `goog_${Math.random().toString(36).substring(2, 9)}`;
+      // Offline fallback: create local authenticated session
+      const id = `usr_${Math.random().toString(36).substring(2, 9)}`;
       const profile: UserProfile = {
         id,
-        name: 'Alex Rivera',
-        email: 'alex.rivera@example.com',
+        name: cleanEmail.split('@')[0],
+        email: cleanEmail,
         avatar: getAvatarUrl(id),
         color: '#00F0FF',
         isGuest: false,
@@ -313,64 +407,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       localStorage.setItem('squadnav_user', JSON.stringify(profile));
       setUser(profile);
-      syncProfileToSupabase(profile).catch(() => {});
     }
   };
 
-  // 3. Email & Password Login
-  const loginWithEmail = async (email: string, pass: string): Promise<void> => {
-    if (isSupabaseConfigured() && supabase) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: pass
-      });
-      if (error) {
-        throw error;
-      }
-      if (data.user) {
-        const profile = await mapSupabaseUserToProfile(data.user);
-        setUser(profile);
-        syncProfileToSupabase(profile).catch(() => {});
-      }
-    } else {
-      const id = `usr_${Math.random().toString(36).substring(2, 9)}`;
-      const profile: UserProfile = {
-        id,
-        name: email.split('@')[0],
-        email,
-        avatar: getAvatarUrl(id),
-        color: '#00E676',
-        isGuest: false,
-        createdAt: Date.now()
-      };
-      localStorage.setItem('squadnav_user', JSON.stringify(profile));
-      setUser(profile);
-      syncProfileToSupabase(profile).catch(() => {});
-    }
-  };
+  // 3. Sign Up with Email & Password
+  const signUp = async (
+    email: string,
+    pass: string,
+    name?: string
+  ): Promise<{ requiresVerification?: boolean }> => {
+    setAuthError(null);
+    const cleanEmail = email.trim();
+    const cleanName = name?.trim() || cleanEmail.split('@')[0];
 
-  // 4. Email & Password Registration
-  const registerWithEmail = async (email: string, pass: string, name: string): Promise<void> => {
+    if (!cleanEmail || !pass) {
+      throw new Error('Email and password are required.');
+    }
+
     if (isSupabaseConfigured() && supabase) {
+      // Use window.location.origin as email redirect URL
+      const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : undefined;
+
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password: pass,
         options: {
+          emailRedirectTo: redirectUrl,
           data: {
-            name: name.trim() || undefined
+            name: cleanName
           }
         }
       });
+
       if (error) {
-        throw error;
+        const friendlyMessage = formatAuthErrorMessage(error);
+        setAuthError(friendlyMessage);
+        throw new Error(friendlyMessage);
       }
 
-      // If user session returned immediately (or auto-confirmed)
-      if (data.user) {
+      // If user session returned immediately (email confirmation disabled or auto-confirmed)
+      if (data.session && data.user) {
         const profile: UserProfile = {
           id: data.user.id,
-          name: name.trim() || email.split('@')[0],
-          email,
+          name: cleanName,
+          email: cleanEmail,
           avatar: getAvatarUrl(data.user.id),
           color: getColorForId(data.user.id),
           isGuest: false,
@@ -379,13 +459,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(profile);
         localStorage.setItem('squadnav_user', JSON.stringify(profile));
         syncProfileToSupabase(profile).catch(() => {});
+        return { requiresVerification: false };
       }
+
+      // Email confirmation is required by Supabase project
+      return { requiresVerification: true };
     } else {
+      // Offline development fallback
       const id = `usr_${Math.random().toString(36).substring(2, 9)}`;
       const profile: UserProfile = {
         id,
-        name,
-        email,
+        name: cleanName,
+        email: cleanEmail,
         avatar: getAvatarUrl(id),
         color: '#8B5CF6',
         isGuest: false,
@@ -393,31 +478,173 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       localStorage.setItem('squadnav_user', JSON.stringify(profile));
       setUser(profile);
-      syncProfileToSupabase(profile).catch(() => {});
+      return { requiresVerification: false };
     }
   };
 
-  // 5. Logout
+  // 4. Request Password Reset (Send recovery email)
+  const requestPasswordReset = async (email: string): Promise<void> => {
+    setAuthError(null);
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      throw new Error('Please enter your email address.');
+    }
+
+    if (isSupabaseConfigured() && supabase) {
+      const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/#reset-password` : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: redirectUrl
+      });
+
+      if (error) {
+        const friendlyMessage = formatAuthErrorMessage(error);
+        setAuthError(friendlyMessage);
+        throw new Error(friendlyMessage);
+      }
+    } else {
+      // Offline fallback: pretend sent
+      console.info('[AuthContext] Mock recovery code sent for:', cleanEmail);
+    }
+  };
+
+  // 5. Verify Recovery Code (OTP)
+  const verifyRecoveryCode = async (email: string, token: string): Promise<void> => {
+    setAuthError(null);
+    const cleanEmail = email.trim();
+    const cleanToken = token.trim();
+
+    if (!cleanEmail || !cleanToken) {
+      throw new Error('Email and verification code are required.');
+    }
+
+    if (isSupabaseConfigured() && supabase) {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: cleanToken,
+        type: 'recovery'
+      });
+
+      if (error) {
+        const friendlyMessage = formatAuthErrorMessage(error);
+        setAuthError(friendlyMessage);
+        throw new Error(friendlyMessage);
+      }
+
+      if (data.session) {
+        setIsRecoveryMode(true);
+      }
+    } else {
+      // Offline fallback: accept any 6-digit code or '123456'
+      if (cleanToken.length >= 6) {
+        setIsRecoveryMode(true);
+      } else {
+        throw new Error('Invalid verification code.');
+      }
+    }
+  };
+
+  // 6. Update Password (Create New Password)
+  const updatePassword = async (newPassword: string): Promise<void> => {
+    setAuthError(null);
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters.');
+    }
+
+    if (isSupabaseConfigured() && supabase) {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        const friendlyMessage = formatAuthErrorMessage(error);
+        setAuthError(friendlyMessage);
+        throw new Error(friendlyMessage);
+      }
+
+      setIsRecoveryMode(false);
+    } else {
+      // Offline fallback
+      setIsRecoveryMode(false);
+    }
+  };
+
+  // 7. Upgrade Guest Account to Registered Account (with data migration)
+  const upgradeGuestAccount = async (
+    email: string,
+    pass: string,
+    name?: string
+  ): Promise<{ requiresVerification?: boolean }> => {
+    setAuthError(null);
+    const currentGuestId = user?.id;
+    const currentGuestName = name?.trim() || user?.name || email.split('@')[0];
+    const currentGuestAvatar = user?.avatar || getAvatarUrl(currentGuestName);
+    const currentGuestColor = user?.color || getColorForId(currentGuestName);
+
+    // Call standard sign up
+    const result = await signUp(email, pass, currentGuestName);
+
+    // If immediate session was created, perform data migration from guest ID to registered ID
+    if (!result.requiresVerification && user) {
+      const newUserId = user.id;
+
+      // Migrate existing squad membership or host ownership in Supabase if configured
+      if (isSupabaseConfigured() && supabase && currentGuestId && currentGuestId !== newUserId) {
+        try {
+          // Update squads hosted by the guest
+          await supabase
+            .from('squads')
+            .update({ host_id: newUserId, host_name: currentGuestName })
+            .eq('host_id', currentGuestId);
+
+          // Update squad_members joined by the guest
+          await supabase
+            .from('squad_members')
+            .update({ user_id: newUserId, name: currentGuestName })
+            .eq('user_id', currentGuestId);
+
+          // Ensure profile reflects non-guest status
+          await supabase.from('profiles').upsert({
+            id: newUserId,
+            name: currentGuestName,
+            email,
+            avatar: currentGuestAvatar,
+            color: currentGuestColor,
+            is_guest: false,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+        } catch (migErr) {
+          console.warn('[AuthContext] Guest data migration warning:', migErr);
+        }
+      }
+    }
+
+    return result;
+  };
+
+  // 8. Logout
   const logout = async (): Promise<void> => {
+    setAuthError(null);
+    setIsRecoveryMode(false);
+
     if (isSupabaseConfigured() && supabase) {
       try {
         await supabase.auth.signOut();
       } catch (err) {
-        console.warn('Supabase signOut error:', err);
+        console.warn('[AuthContext] Supabase signOut warning:', err);
       }
     }
+
     localStorage.removeItem('squadnav_user');
-    createGuestUser();
+    setUser(null);
   };
 
-  // 6. Update Profile Name
+  // 9. Update Profile Name
   const updateProfileName = (name: string): void => {
     if (user) {
       const updated: UserProfile = { ...user, name };
       setUser(updated);
       localStorage.setItem('squadnav_user', JSON.stringify(updated));
 
-      // Asynchronously update public.profiles table in Supabase
       if (isSupabaseConfigured() && supabase) {
         (async () => {
           if (!supabase) return;
@@ -437,17 +664,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // 10. Google OAuth
+  const loginWithGoogle = async (): Promise<void> => {
+    if (isSupabaseConfigured() && supabase) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) {
+        const friendly = formatAuthErrorMessage(error);
+        setAuthError(friendly);
+        throw new Error(friendly);
+      }
+    } else {
+      const id = `goog_${Math.random().toString(36).substring(2, 9)}`;
+      const profile: UserProfile = {
+        id,
+        name: 'Squad Explorer',
+        email: 'explorer@squadmaps.app',
+        avatar: getAvatarUrl(id),
+        color: '#00F0FF',
+        isGuest: false,
+        createdAt: Date.now()
+      };
+      localStorage.setItem('squadnav_user', JSON.stringify(profile));
+      setUser(profile);
+    }
+  };
+
+  const isAuthenticated = Boolean(user && !user.isGuest);
+  const isGuest = Boolean(user && user.isGuest);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
-        loginAsGuest,
-        loginWithGoogle,
-        loginWithEmail,
-        registerWithEmail,
+        isAuthenticated,
+        isGuest,
+        authError,
+        isRecoveryMode,
+        clearAuthError,
+        setIsRecoveryMode,
+
+        login,
+        signUp,
+        continueAsGuest,
         logout,
-        updateProfileName
+
+        requestPasswordReset,
+        verifyRecoveryCode,
+        updatePassword,
+        upgradeGuestAccount,
+
+        updateProfileName,
+
+        // Backwards compatibility
+        loginWithEmail: login,
+        registerWithEmail: async (email: string, pass: string, name: string) => {
+          await signUp(email, pass, name);
+        },
+        loginAsGuest: continueAsGuest,
+        loginWithGoogle
       }}
     >
       {children}
