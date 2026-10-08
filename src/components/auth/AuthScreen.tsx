@@ -59,11 +59,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     isRecoveryMode ? 'reset_password' : isUpgradeMode ? 'signup' : initialView
   );
 
-  // Form Fields
+  // Form Fields - strictly initialized to empty strings so new users start clean
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState(user?.name || '');
+  const [name, setName] = useState(isUpgradeMode && user?.isGuest ? (user?.name || '') : '');
   const [verificationCode, setVerificationCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
@@ -81,6 +81,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
   // Resend Cooldown Timer
   const [resendCooldown, setResendCooldown] = useState<number>(0);
+
+  // Clear stale errors on mount
+  useEffect(() => {
+    setFormError(null);
+    clearAuthError();
+    setSuccessMessage(null);
+  }, []);
 
   useEffect(() => {
     if (isRecoveryMode && currentView !== 'reset_password') {
@@ -100,6 +107,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setFormError(null);
     clearAuthError();
     setSuccessMessage(null);
+    if (!isUpgradeMode) {
+      setName('');
+    }
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     setCurrentView(newView);
   };
 
@@ -144,6 +159,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setFormError(null);
     clearAuthError();
 
+    const cleanName = name.trim();
+    if (!cleanName) {
+      setFormError('Please enter your squad callsign or name.');
+      return;
+    }
+
     const cleanEmail = email.trim();
     if (!cleanEmail) {
       setFormError('Please enter your email address.');
@@ -157,8 +178,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       setFormError('Please enter a password.');
       return;
     }
-    if (password.length < 6) {
-      setFormError('Password must be at least 6 characters long.');
+    if (password.length < 8) {
+      setFormError('Password must be at least 8 characters long.');
       return;
     }
     if (!confirmPassword) {
@@ -173,7 +194,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     setIsLoading(true);
     try {
       if (isUpgradeMode && user?.isGuest) {
-        const res = await upgradeGuestAccount(cleanEmail, password, name.trim());
+        const res = await upgradeGuestAccount(cleanEmail, password, cleanName);
         if (res.requiresVerification) {
           setCurrentView('email_sent_notice');
         } else {
@@ -181,7 +202,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           if (onSuccess) onSuccess();
         }
       } else {
-        const res = await signUp(cleanEmail, password, name.trim());
+        const res = await signUp(cleanEmail, password, cleanName);
         if (res.requiresVerification) {
           setCurrentView('email_sent_notice');
         } else {
@@ -279,8 +300,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
       setFormError('Please enter a new password.');
       return;
     }
-    if (newPassword.length < 6) {
-      setFormError('Password must be at least 6 characters long.');
+    if (newPassword.length < 8) {
+      setFormError('Password must be at least 8 characters long.');
       return;
     }
     if (!confirmNewPassword) {
@@ -333,17 +354,21 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
     <div
       style={{
         width: '100%',
+        height: '100%',
         minHeight: '100%',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px 16px',
+        justifyContent: 'flex-start',
+        padding: '24px 16px 44px',
         backgroundColor: onClose ? 'transparent' : 'var(--bg-primary)',
         boxSizing: 'border-box',
         position: 'relative'
       }}
     >
-      {/* Background Neon Elements */}
+      {/* Background Ambient Glow Elements */}
       {!onClose && (
         <>
           <div
@@ -379,13 +404,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         className="glass-card animate-fade-in"
         style={{
           width: '100%',
-          maxWidth: '440px',
-          padding: '32px 28px',
+          maxWidth: '430px',
+          margin: 'auto 0',
+          padding: '26px 22px',
           boxSizing: 'border-box',
           position: 'relative',
           zIndex: 1,
           borderRadius: 'var(--radius-md)',
-          boxShadow: 'var(--shadow-lg), 0 0 30px rgba(0, 240, 255, 0.08)',
+          boxShadow: 'var(--shadow-lg), 0 0 35px rgba(0, 240, 255, 0.08)',
           border: '1px solid var(--border-medium)',
           backgroundColor: 'var(--bg-glass-card)'
         }}
@@ -410,30 +436,30 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         )}
 
         {/* Branding & Logo Header */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <div
             style={{
-              width: '52px',
-              height: '52px',
-              borderRadius: '16px',
+              width: '48px',
+              height: '48px',
+              borderRadius: '14px',
               background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-green))',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 25px rgba(0, 240, 255, 0.4)',
-              marginBottom: '14px'
+              boxShadow: '0 0 22px rgba(0, 240, 255, 0.35)',
+              marginBottom: '12px'
             }}
           >
-            <Compass size={28} color="#0A0E17" />
+            <Compass size={26} color="#0A0E17" />
           </div>
 
           <h1
             style={{
-              fontSize: '24px',
+              fontSize: '22px',
               fontWeight: 800,
               color: '#FFFFFF',
               letterSpacing: '-0.5px',
-              marginBottom: '6px'
+              marginBottom: '4px'
             }}
           >
             Squad<span className="text-cyan">Maps</span>
@@ -443,11 +469,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             {isUpgradeMode
               ? 'Upgrade your temporary session to a permanent account'
               : currentView === 'login'
-              ? 'Welcome back! Log in to join your squad convoy'
+              ? 'Welcome to SquadMaps'
               : currentView === 'signup'
-              ? 'Create an account to start hosting & saving trips'
+              ? 'Welcome to SquadMaps'
               : currentView === 'forgot_password'
-              ? 'Recover your account password securely'
+              ? 'Reset Password'
               : currentView === 'verify_code'
               ? 'Enter the verification code sent to your email'
               : currentView === 'reset_password'
@@ -586,8 +612,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
-                  placeholder="pilot@squadmaps.app"
+                  placeholder="you@example.com"
                   required
                   style={{
                     width: '100%',
@@ -649,8 +676,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
-                  placeholder="••••••••••••"
+                  placeholder="Enter your password"
                   required
                   style={{
                     width: '100%',
@@ -701,7 +729,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               {isLoading ? (
                 <>
                   <RefreshCw size={18} className="animate-spin" />
-                  <span>Logging in...</span>
+                  <span>Logging In...</span>
                 </>
               ) : (
                 <>
@@ -738,15 +766,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    margin: '8px 0 2px',
+                    margin: '6px 0 2px',
                     color: 'var(--text-muted)',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    textTransform: 'uppercase'
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
                   }}
                 >
                   <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
-                  <span>or</span>
+                  <span>OR</span>
                   <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
                 </div>
 
@@ -757,21 +786,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   className="btn-secondary"
                   style={{
                     width: '100%',
-                    padding: '14px',
+                    padding: '13px',
                     fontSize: '14px',
+                    fontWeight: 700,
                     borderRadius: 'var(--radius-xs)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                    borderColor: 'var(--border-medium)'
+                    borderColor: 'var(--border-medium)',
+                    cursor: 'pointer'
                   }}
                 >
                   <Zap size={16} color="var(--accent-amber)" />
                   <span>Continue as Guest</span>
                 </button>
-                <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)' }}>
+                <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: '-2px' }}>
                   Explore maps, view routes, and join convoys without an account
                 </div>
               </>
@@ -784,7 +815,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
         {/* ==================================================== */}
         {currentView === 'signup' && (
           <form onSubmit={handleSignUpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Display Name / Callsign */}
+            {/* Squad Callsign / Name */}
             <div>
               <label
                 htmlFor="signup-name"
@@ -809,10 +840,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <input
                   id="signup-name"
                   type="text"
-                  autoComplete="name"
+                  autoComplete="off"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Apex Pilot or Alex"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (formError) setFormError(null);
+                    if (authError) clearAuthError();
+                  }}
+                  placeholder="Your Squad Callsign"
                   style={{
                     width: '100%',
                     padding: '13px 14px 13px 42px',
@@ -853,13 +888,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 <input
                   id="signup-email"
                   type="email"
-                  autoComplete="email"
+                  autoComplete="off"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
-                  placeholder="pilot@squadmaps.app"
+                  placeholder="you@example.com"
                   required
                   style={{
                     width: '100%',
@@ -906,8 +942,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
-                  placeholder="Min. 6 characters"
+                  placeholder="Create a password"
                   required
                   style={{
                     width: '100%',
@@ -972,8 +1009,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
-                  placeholder="Re-enter your password"
+                  placeholder="Confirm your password"
                   required
                   style={{
                     width: '100%',
@@ -1061,15 +1099,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    margin: '8px 0 2px',
+                    margin: '6px 0 2px',
                     color: 'var(--text-muted)',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    textTransform: 'uppercase'
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
                   }}
                 >
                   <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
-                  <span>or</span>
+                  <span>OR</span>
                   <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
                 </div>
 
@@ -1080,20 +1119,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   className="btn-secondary"
                   style={{
                     width: '100%',
-                    padding: '14px',
+                    padding: '13px',
                     fontSize: '14px',
+                    fontWeight: 700,
                     borderRadius: 'var(--radius-xs)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                    borderColor: 'var(--border-medium)'
+                    borderColor: 'var(--border-medium)',
+                    cursor: 'pointer'
                   }}
                 >
                   <Zap size={16} color="var(--accent-amber)" />
                   <span>Continue as Guest</span>
                 </button>
+                <div style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: '-2px' }}>
+                  Explore maps, view routes, and join convoys without an account
+                </div>
               </>
             )}
           </form>
@@ -1133,8 +1177,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onChange={(e) => {
                     setEmail(e.target.value);
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
-                  placeholder="Enter your registered email"
+                  placeholder="you@example.com"
                   required
                   style={{
                     width: '100%',
@@ -1166,7 +1211,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
               {isLoading ? (
                 <>
                   <RefreshCw size={18} className="animate-spin" />
-                  <span>Sending Recovery Code...</span>
+                  <span>Sending...</span>
                 </>
               ) : (
                 <>
@@ -1228,6 +1273,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onChange={(e) => {
                     setVerificationCode(e.target.value.trim());
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
                   placeholder="e.g. 123456"
                   required
@@ -1344,8 +1390,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onChange={(e) => {
                     setNewPassword(e.target.value);
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
-                  placeholder="Min. 6 characters"
+                  placeholder="Create a new password"
                   required
                   style={{
                     width: '100%',
@@ -1410,8 +1457,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                   onChange={(e) => {
                     setConfirmNewPassword(e.target.value);
                     if (formError) setFormError(null);
+                    if (authError) clearAuthError();
                   }}
-                  placeholder="Re-enter your new password"
+                  placeholder="Confirm your new password"
                   required
                   style={{
                     width: '100%',
@@ -1465,7 +1513,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
                 </>
               ) : (
                 <>
-                  <span>Reset Password</span>
+                  <span>Update Password</span>
                   <ArrowRight size={18} />
                 </>
               )}

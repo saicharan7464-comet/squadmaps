@@ -1338,13 +1338,15 @@ const AppContent: React.FC = () => {
   // 2. Unauthenticated user: show Authentication Screen
   if (!user && !isRecoveryMode) {
     return (
-      <AuthScreen
-        onSuccess={() => {
-          if (targetSquadId) {
-            setCurrentView('join');
-          }
-        }}
-      />
+      <div style={{ width: '100%', height: '100%', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <AuthScreen
+          onSuccess={() => {
+            if (targetSquadId) {
+              setCurrentView('join');
+            }
+          }}
+        />
+      </div>
     );
   }
 

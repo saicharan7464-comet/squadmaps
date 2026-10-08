@@ -71,30 +71,82 @@ const getAvatarUrl = (seed: string): string => {
 // Normalize and map raw Supabase error messages to friendly, non-leaking user messages
 export const formatAuthErrorMessage = (err: any): string => {
   if (!err) return 'An unexpected error occurred. Please try again.';
-  const msg: string = (err.message || err.error_description || String(err)).toLowerCase();
+  const rawMsg: string = (err.message || err.error_description || String(err));
+  const msg: string = rawMsg.toLowerCase();
 
-  if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
-    return 'Incorrect email or password. Please verify your credentials and try again.';
+  // Log detailed technical error to console safely for developers without leaking secrets
+  console.error('[Supabase Auth Technical Error]:', {
+    message: rawMsg,
+    status: err.status,
+    code: err.code
+  });
+
+  if (
+    msg.includes('password should be at least') ||
+    msg.includes('weak password') ||
+    msg.includes('password is too weak') ||
+    msg.includes('password must be')
+  ) {
+    return 'Password is too weak. Please choose a stronger password (minimum 8 characters).';
   }
-  if (msg.includes('user already registered') || msg.includes('already exists') || msg.includes('email address already in use')) {
+
+  if (
+    msg.includes('invalid email') ||
+    msg.includes('email address is invalid') ||
+    msg.includes('valid email') ||
+    msg.includes('unable to validate email address')
+  ) {
+    return 'Please enter a valid email address.';
+  }
+
+  if (
+    msg.includes('user already registered') ||
+    msg.includes('already registered') ||
+    msg.includes('already exists') ||
+    msg.includes('email address already in use')
+  ) {
     return 'An account with this email address already exists. Please log in instead.';
   }
+
+  if (
+    msg.includes('invalid login credentials') ||
+    msg.includes('invalid_grant') ||
+    msg.includes('invalid credentials')
+  ) {
+    return 'Incorrect email or password.';
+  }
+
+  if (msg.includes('email not confirmed') || msg.includes('unconfirmed')) {
+    return 'Please check your email and click the confirmation link to activate your account.';
+  }
+
   if (msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('over_email_send_rate_limit')) {
     return 'Too many attempts. For security, please wait a minute before trying again.';
   }
+
   if (msg.includes('token has expired') || msg.includes('otp has expired') || msg.includes('expired')) {
     return 'This verification code has expired. Please request a new code.';
   }
+
   if (msg.includes('invalid token') || msg.includes('invalid otp') || msg.includes('token is invalid') || msg.includes('bad code')) {
     return 'Invalid verification code. Please check the code in your email and try again.';
   }
-  if (msg.includes('password should be at least') || msg.includes('weak password')) {
-    return 'Password must be at least 6 characters long and include numbers or symbols.';
+
+  // Network / Host connectivity distinction
+  if (
+    msg.includes('network') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('enotfound') ||
+    msg.includes('getaddrinfo') ||
+    msg.includes('connection refused')
+  ) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return 'Unable to connect to the server. Please check your internet connection and try again.';
+    }
+    return 'Unable to reach the Supabase authentication server. Please verify your Supabase project status and VITE_SUPABASE_URL in .env / Vercel.';
   }
-  if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('enotfound')) {
-    return 'Network connection issue. Please check your internet connection.';
-  }
-  return err.message || 'Authentication request failed. Please check your details and try again.';
+
+  return rawMsg || 'Authentication request failed. Please check your details and try again.';
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -546,8 +598,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 6. Update Password (Create New Password)
   const updatePassword = async (newPassword: string): Promise<void> => {
     setAuthError(null);
-    if (!newPassword || newPassword.length < 6) {
-      throw new Error('Password must be at least 6 characters.');
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters long.');
     }
 
     if (isSupabaseConfigured() && supabase) {

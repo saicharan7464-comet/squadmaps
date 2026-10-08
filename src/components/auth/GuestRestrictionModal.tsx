@@ -112,7 +112,7 @@ export const GuestRestrictionModal: React.FC<GuestRestrictionModalProps> = ({
           </h2>
 
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-            {featureDescription}
+            This feature requires a SquadMaps account. Register now to save your convoys, checkpoints, and custom route history.
           </p>
         </div>
 
@@ -153,11 +153,12 @@ export const GuestRestrictionModal: React.FC<GuestRestrictionModalProps> = ({
               width: '100%',
               padding: '13px',
               fontSize: '14px',
+              fontWeight: 700,
               borderRadius: 'var(--radius-xs)'
             }}
           >
             <UserPlus size={16} />
-            <span>Create Free Account</span>
+            <span>Create Account</span>
             <ArrowRight size={16} style={{ marginLeft: 'auto' }} />
           </button>
 
@@ -169,48 +170,30 @@ export const GuestRestrictionModal: React.FC<GuestRestrictionModalProps> = ({
               width: '100%',
               padding: '12px',
               fontSize: '13px',
+              fontWeight: 600,
               borderRadius: 'var(--radius-xs)'
             }}
           >
             <LogIn size={15} />
-            <span>Already have an account? Log In</span>
+            <span>Log In</span>
           </button>
 
-          {onProceedAsGuest ? (
-            <button
-              type="button"
-              onClick={onProceedAsGuest}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-muted)',
-                fontSize: '12px',
-                fontWeight: 600,
-                padding: '8px',
-                cursor: 'pointer',
-                textAlign: 'center'
-              }}
-            >
-              Continue as Guest Anyway (Temporary Session)
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-muted)',
-                fontSize: '12px',
-                fontWeight: 600,
-                padding: '8px',
-                cursor: 'pointer',
-                textAlign: 'center'
-              }}
-            >
-              Continue Exploring Map
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              fontSize: '12px',
+              fontWeight: 600,
+              padding: '8px',
+              cursor: 'pointer',
+              textAlign: 'center'
+            }}
+          >
+            Continue Exploring
+          </button>
         </div>
       </div>
     </div>
