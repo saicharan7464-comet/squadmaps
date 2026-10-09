@@ -39,13 +39,23 @@ import {
   Footprints
 } from 'lucide-react';
 
+import { GlobalHeader } from './components/common/GlobalHeader';
+import { MobileBottomNav } from './components/common/MobileBottomNav';
+import { UserAccountModal } from './components/auth/UserAccountModal';
+
 type AppView = 'home' | 'join' | 'map';
 
 const NavigationCockpit: React.FC<{
   onGoHome: () => void;
   openCreateSquadOnMount?: boolean;
   autoStartNavigationOnMount?: boolean;
-}> = ({ onGoHome, openCreateSquadOnMount = false, autoStartNavigationOnMount = false }) => {
+  onOpenAccount?: () => void;
+}> = ({
+  onGoHome,
+  openCreateSquadOnMount = false,
+  autoStartNavigationOnMount = false,
+  onOpenAccount
+}) => {
   const { user, updateProfileName } = useAuth();
   const {
     squad,
@@ -582,6 +592,40 @@ const NavigationCockpit: React.FC<{
                     }}
                   />
                 )}
+              </button>
+            )}
+
+            {onOpenAccount && (
+              <button
+                type="button"
+                className="btn-icon"
+                onClick={onOpenAccount}
+                title={`Account (${user?.name || 'Pilot'})`}
+                style={{
+                  flexShrink: 0,
+                  width: '46px',
+                  height: '46px',
+                  padding: '3px'
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    backgroundColor: user?.color || 'var(--accent-cyan)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <img
+                    src={user?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'pilot'}`}
+                    alt=""
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
               </button>
             )}
           </div>
@@ -1292,10 +1336,12 @@ const NavigationCockpit: React.FC<{
   );
 };
 
-export default function App() {
+const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [targetSquadId, setTargetSquadId] = useState<string | null>(null);
   const [openCreateOnCockpit, setOpenCreateOnCockpit] = useState(false);
+  const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
   // Check URL on load for invite links (?join=SQ-1234, /join/SQ-1234, #join=SQ-1234)
   useEffect(() => {
@@ -1305,8 +1351,6 @@ export default function App() {
       setCurrentView('join');
     }
   }, []);
-
-  const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
 
   const handleOpenMap = () => {
     setOpenCreateOnCockpit(false);
@@ -1326,50 +1370,92 @@ export default function App() {
   };
 
   return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+      {/* Persistent Global Header on Home & Join pages */}
+      {currentView !== 'map' && (
+        <GlobalHeader
+          currentView={currentView}
+          onNavigate={(view) => {
+            if (view === 'map') handleOpenMap();
+            else setCurrentView('home');
+          }}
+          onOpenAccount={() => setIsAccountModalOpen(true)}
+        />
+      )}
+
+      {/* Main Content Area */}
+      <main style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
+        {currentView === 'home' && (
+          <HomePage
+            onOpenMap={handleOpenMap}
+            onStartNavigating={handleOpenMap}
+            onCreateSquad={handleCreateSquad}
+            onJoinSquad={handleJoinSquadId}
+            onOpenAccount={() => setIsAccountModalOpen(true)}
+          />
+        )}
+
+        {currentView === 'join' && targetSquadId && (
+          <JoinSquadPage
+            squadId={targetSquadId}
+            onJoinSuccess={() => {
+              setAutoStartNavOnCockpit(false);
+              setCurrentView('map');
+            }}
+            onCancel={() => {
+              setCurrentView('home');
+            }}
+            onRequestLocation={async () => {
+              if ('geolocation' in navigator) {
+                return new Promise((resolve) => {
+                  navigator.geolocation.getCurrentPosition(
+                    () => resolve(true),
+                    () => resolve(false)
+                  );
+                });
+              }
+              return false;
+            }}
+          />
+        )}
+
+        {currentView === 'map' && (
+          <NavigationCockpit
+            onGoHome={() => setCurrentView('home')}
+            openCreateSquadOnMount={openCreateOnCockpit}
+            autoStartNavigationOnMount={autoStartNavOnCockpit}
+            onOpenAccount={() => setIsAccountModalOpen(true)}
+          />
+        )}
+      </main>
+
+      {/* Touch-Friendly Bottom Navigation for Mobile */}
+      <MobileBottomNav
+        currentView={currentView}
+        onNavigate={(view) => {
+          if (view === 'map') handleOpenMap();
+          else setCurrentView('home');
+        }}
+        onOpenAccount={() => setIsAccountModalOpen(true)}
+        onOpenSquadAction={() => {
+          handleCreateSquad();
+        }}
+      />
+
+      {/* User Account / Profile Modal */}
+      <UserAccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+      />
+    </div>
+  );
+};
+
+export default function App() {
+  return (
     <AuthProvider>
       <SquadProvider userCoords={null}>
-        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-          {currentView === 'home' && (
-            <HomePage
-              onOpenMap={handleOpenMap}
-              onStartNavigating={handleOpenMap}
-              onCreateSquad={handleCreateSquad}
-              onJoinSquad={handleJoinSquadId}
-            />
-          )}
-
-          {currentView === 'join' && targetSquadId && (
-            <JoinSquadPage
-              squadId={targetSquadId}
-              onJoinSuccess={() => {
-                setAutoStartNavOnCockpit(false);
-                setCurrentView('map');
-              }}
-              onCancel={() => {
-                setCurrentView('home');
-              }}
-              onRequestLocation={async () => {
-                if ('geolocation' in navigator) {
-                  return new Promise((resolve) => {
-                    navigator.geolocation.getCurrentPosition(
-                      () => resolve(true),
-                      () => resolve(false)
-                    );
-                  });
-                }
-                return false;
-              }}
-            />
-          )}
-
-          {currentView === 'map' && (
-            <NavigationCockpit
-              onGoHome={() => setCurrentView('home')}
-              openCreateSquadOnMount={openCreateOnCockpit}
-              autoStartNavigationOnMount={autoStartNavOnCockpit}
-            />
-          )}
-        </div>
+        <AppContent />
       </SquadProvider>
     </AuthProvider>
   );

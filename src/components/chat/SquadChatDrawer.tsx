@@ -54,8 +54,8 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
-        backdropFilter: 'blur(6px)',
+        backgroundColor: 'rgba(8, 13, 22, 0.75)',
+        backdropFilter: 'blur(8px)',
         zIndex: 'var(--z-bottom-sheet)',
         display: 'flex',
         justifyContent: 'flex-end'
@@ -63,7 +63,7 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
       onClick={onClose}
     >
       <div
-        className="glass-panel animate-slide-up"
+        className="animate-slide-up"
         style={{
           width: '100%',
           maxWidth: '420px',
@@ -71,10 +71,12 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: 'var(--bg-secondary)',
-          borderLeft: '1px solid var(--border-medium)',
-          borderRadius: 0
+          borderLeft: '1px solid var(--border-subtle)',
+          boxShadow: 'var(--shadow-xl)'
         }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Squad Radio Drawer"
       >
         {/* Header */}
         <div
@@ -83,27 +85,66 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            backgroundColor: 'var(--bg-primary)'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MessageSquare size={20} color="var(--accent-cyan)" />
-            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#FFFFFF' }}>Squad Radio</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'rgba(0, 217, 232, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <MessageSquare size={18} color="var(--accent-cyan)" />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Convoy Radio
+                </h3>
+                <span
+                  style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--accent-green)',
+                    display: 'inline-block'
+                  }}
+                  title="Channel active"
+                />
+              </div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                Real-time channel
+              </span>
+            </div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
-            <X size={20} />
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-icon"
+            aria-label="Close radio drawer"
+            style={{ width: '34px', height: '34px', color: 'var(--text-secondary)' }}
+          >
+            <X size={18} />
           </button>
         </div>
 
         {/* Quick Action Chips Bar */}
         <div
           style={{
-            padding: '12px 16px',
+            padding: '10px 16px',
             borderBottom: '1px solid var(--border-subtle)',
             display: 'flex',
             gap: '8px',
             overflowX: 'auto',
-            scrollbarWidth: 'none'
+            scrollbarWidth: 'none',
+            backgroundColor: 'var(--bg-card)'
           }}
         >
           {QUICK_ACTIONS.map((qa) => {
@@ -111,20 +152,22 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             return (
               <button
                 key={qa.id}
+                type="button"
                 onClick={() => handleQuickAction(qa)}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
                   padding: '6px 12px',
-                  borderRadius: '999px',
+                  borderRadius: 'var(--radius-full)',
                   fontSize: '12px',
                   fontWeight: 700,
                   whiteSpace: 'nowrap',
-                  backgroundColor: 'var(--bg-card)',
+                  backgroundColor: 'var(--bg-elevated)',
                   color: qa.color,
-                  border: `1px solid ${qa.color}44`,
-                  boxShadow: 'var(--shadow-sm)'
+                  border: `1px solid ${qa.color}33`,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.15s'
                 }}
               >
                 <Icon size={14} />
@@ -142,12 +185,13 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             padding: '16px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px'
+            gap: '12px',
+            backgroundColor: 'var(--bg-primary)'
           }}
         >
           {messages.length === 0 ? (
-            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              No messages yet. Send a quick action or chat to coordinate with your squad!
+            <div style={{ margin: 'auto', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', maxWidth: '240px', lineHeight: 1.5 }}>
+              No radio messages yet. Tap a quick status above or type a message to coordinate with the convoy!
             </div>
           ) : (
             messages.map((msg) => {
@@ -178,7 +222,7 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
                     >
                       <span
                         style={{
-                          fontSize: '12px',
+                          fontSize: '11px',
                           fontWeight: 700,
                           color: msg.senderColor || 'var(--accent-cyan)',
                           letterSpacing: '0.2px'
@@ -215,13 +259,18 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
                       backgroundColor: isMe
                         ? 'var(--accent-cyan)'
                         : isAlert
-                        ? 'var(--bg-card)'
-                        : 'var(--bg-tertiary)',
-                      color: isMe ? 'var(--text-inverse)' : '#FFFFFF',
-                      border: isAlert ? `1px solid ${msg.senderColor || 'var(--accent-amber)'}` : 'none',
+                        ? 'var(--bg-elevated)'
+                        : 'var(--bg-card)',
+                      color: isMe ? 'var(--text-inverse)' : 'var(--text-primary)',
+                      border: isAlert
+                        ? `1.5px solid ${msg.senderColor || 'var(--accent-amber)'}`
+                        : isMe
+                        ? 'none'
+                        : '1px solid var(--border-subtle)',
                       fontWeight: isAlert ? 700 : 500,
                       fontSize: '14px',
-                      boxShadow: 'var(--shadow-sm)'
+                      boxShadow: 'var(--shadow-sm)',
+                      wordBreak: 'break-word'
                     }}
                   >
                     {msg.text}
@@ -240,23 +289,20 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             padding: '14px 16px',
             borderTop: '1px solid var(--border-subtle)',
             display: 'flex',
-            gap: '8px'
+            gap: '8px',
+            backgroundColor: 'var(--bg-card)'
           }}
         >
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Type a message..."
+            placeholder="Type a radio message..."
+            className="input-base"
             style={{
               flex: 1,
               padding: '10px 14px',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: 'var(--bg-card)',
-              border: '1px solid var(--border-medium)',
-              color: '#FFFFFF',
-              fontSize: '14px',
-              outline: 'none'
+              fontSize: '14px'
             }}
           />
 
@@ -264,7 +310,8 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             type="submit"
             disabled={!inputText.trim()}
             className="btn-primary"
-            style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)' }}
+            aria-label="Send radio message"
+            style={{ padding: '10px 14px' }}
           >
             <Send size={16} />
           </button>

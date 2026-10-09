@@ -1,55 +1,74 @@
-/* SquadNav Design Tokens - Cockpit Dark Navigation Theme */
+/* SquadMaps Design Tokens - Modern Navigation & Travel SaaS Theme */
 :root {
-  /* Color Palette - Night Driving / Navigation Optimized */
-  --bg-primary: #0A0E17;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1F2937;
-  --bg-elevated: rgba(17, 24, 39, 0.85);
-  --bg-card: #151D2C;
-  --bg-glass: rgba(15, 23, 42, 0.78);
-  --bg-glass-card: rgba(22, 33, 53, 0.85);
+  /* Color Palette - Night Driving & Cockpit Navigation Optimized */
+  --bg-primary: #080D16;
+  --bg-secondary: #101827;
+  --bg-surface: #151F30;
+  --bg-elevated: #1B2739;
+  --bg-card: #151F30;
+  --bg-card-hover: #19253B;
+  --bg-glass: rgba(16, 24, 39, 0.82);
+  --bg-glass-card: rgba(21, 31, 48, 0.88);
+  --bg-glass-elevated: rgba(27, 39, 57, 0.94);
 
   /* Primary Accent & Signal Colors */
-  --accent-cyan: #00F0FF;
-  --accent-cyan-hover: #33F3FF;
-  --accent-cyan-dim: rgba(0, 240, 255, 0.12);
-  --accent-green: #00E676;
-  --accent-green-dim: rgba(0, 230, 118, 0.15);
-  --accent-amber: #FFB300;
-  --accent-amber-dim: rgba(255, 179, 0, 0.15);
-  --accent-red: #FF3D71;
-  --accent-red-dim: rgba(255, 61, 113, 0.15);
+  --accent-cyan: #00D9E8;
+  --accent-cyan-hover: #26E2F0;
+  --accent-cyan-dim: rgba(0, 217, 232, 0.12);
+  --accent-cyan-glow: rgba(0, 217, 232, 0.25);
+
+  --accent-green: #00D6A0;
+  --accent-green-hover: #20E6B2;
+  --accent-green-dim: rgba(0, 214, 160, 0.12);
+
+  --accent-amber: #F59E0B;
+  --accent-amber-hover: #FBBF24;
+  --accent-amber-dim: rgba(245, 158, 11, 0.12);
+
+  --accent-red: #EF4444;
+  --accent-red-hover: #F87171;
+  --accent-red-dim: rgba(239, 68, 68, 0.12);
+
   --accent-purple: #8B5CF6;
-  --accent-purple-dim: rgba(139, 92, 246, 0.15);
+  --accent-purple-dim: rgba(139, 92, 246, 0.12);
 
   /* Typography Colors */
-  --text-primary: #F9FAFB;
-  --text-secondary: #9CA3AF;
-  --text-muted: #6B7280;
-  --text-inverse: #0A0E17;
+  --text-primary: #F4F7FB;
+  --text-secondary: #9AA7B8;
+  --text-muted: #64748B;
+  --text-inverse: #080D16;
 
   /* Borders & Dividers */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.16);
-  --border-active: rgba(0, 240, 255, 0.5);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-medium: rgba(255, 255, 255, 0.14);
+  --border-active: rgba(0, 217, 232, 0.5);
+  --border-slate: #223147;
 
-  /* Shadows & Glows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
-  --shadow-glow-cyan: 0 0 20px rgba(0, 240, 255, 0.25);
-  --shadow-glow-green: 0 0 20px rgba(0, 230, 118, 0.25);
+  /* Spacing Scale (4, 8, 12, 16, 24, 32px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Shadows - Subtle & Restrained (No excessive neon blur) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-elevated: 0 12px 36px rgba(0, 0, 0, 0.65);
+  --shadow-glow-cyan: 0 0 16px rgba(0, 217, 232, 0.2);
 
   /* Typography Families */
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, monospace;
 
   /* Sizing & Touch Targets */
-  --touch-target-min: 48px;
+  --touch-target-min: 44px;
   --radius-xs: 6px;
   --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
   --radius-full: 9999px;
 
   /* Navigation Z-Indices */

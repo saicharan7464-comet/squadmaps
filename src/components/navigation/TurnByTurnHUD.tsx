@@ -287,22 +287,24 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {onToggleSquad && (
               <button
+                type="button"
                 onClick={onToggleSquad}
                 className="btn-secondary"
                 title="View squad members and details"
+                aria-label="View squad members"
                 style={{
                   borderRadius: 'var(--radius-full)',
-                  padding: '10px 14px',
-                  backgroundColor: isSquadOpen ? 'rgba(0, 240, 255, 0.2)' : 'var(--bg-glass)',
-                  borderColor: isSquadOpen ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                  padding: '9px 13px',
+                  backgroundColor: isSquadOpen ? 'var(--accent-cyan-dim)' : 'var(--bg-surface)',
+                  borderColor: isSquadOpen ? 'var(--accent-cyan)' : 'var(--border-medium)',
                   color: isSquadOpen ? 'var(--accent-cyan)' : 'var(--text-primary)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
                 }}
               >
-                <Users size={18} color="var(--accent-cyan)" />
-                <span style={{ fontWeight: 700, fontSize: '13px' }}>
+                <Users size={16} color="var(--accent-cyan)" />
+                <span style={{ fontWeight: 700, fontSize: '12px' }}>
                   Squad {squadMemberCount !== undefined ? `(${squadMemberCount})` : ''}
                 </span>
               </button>
@@ -310,14 +312,16 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
 
             {onToggleChat && (
               <button
+                type="button"
                 onClick={onToggleChat}
                 className="btn-secondary"
                 title="Open Squad Chat Radio"
+                aria-label="Open squad chat"
                 style={{
                   borderRadius: 'var(--radius-full)',
-                  padding: '10px 14px',
-                  backgroundColor: isChatOpen ? 'rgba(0, 240, 255, 0.2)' : 'var(--bg-glass)',
-                  borderColor: isChatOpen ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                  padding: '9px 13px',
+                  backgroundColor: isChatOpen ? 'var(--accent-cyan-dim)' : 'var(--bg-surface)',
+                  borderColor: isChatOpen ? 'var(--accent-cyan)' : 'var(--border-medium)',
                   color: isChatOpen ? 'var(--accent-cyan)' : 'var(--text-primary)',
                   display: 'flex',
                   alignItems: 'center',
@@ -325,16 +329,16 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
                   position: 'relative'
                 }}
               >
-                <MessageSquare size={18} color="var(--accent-cyan)" />
-                <span style={{ fontWeight: 700, fontSize: '13px' }}>Chat</span>
+                <MessageSquare size={16} color="var(--accent-cyan)" />
+                <span style={{ fontWeight: 700, fontSize: '12px' }}>Chat</span>
                 {hasUnreadMessages && (
                   <span
                     style={{
                       position: 'absolute',
-                      top: '6px',
-                      right: '6px',
-                      width: '8px',
-                      height: '8px',
+                      top: '5px',
+                      right: '5px',
+                      width: '7px',
+                      height: '7px',
                       borderRadius: '50%',
                       backgroundColor: 'var(--accent-green)'
                     }}
@@ -345,18 +349,20 @@ export const TurnByTurnHUD: React.FC<TurnByTurnHUDProps> = ({
 
             {/* Exit Navigation Button */}
             <button
+              type="button"
               onClick={onExitNavigation}
               className="btn-secondary"
+              aria-label="Exit navigation"
               style={{
                 borderRadius: 'var(--radius-full)',
-                padding: '10px 18px',
-                backgroundColor: 'rgba(255, 61, 113, 0.15)',
-                borderColor: 'var(--accent-red)',
+                padding: '9px 16px',
+                backgroundColor: 'var(--accent-red-dim)',
+                borderColor: 'rgba(239, 68, 68, 0.4)',
                 color: 'var(--accent-red)'
               }}
             >
-              <X size={18} />
-              <span style={{ fontWeight: 700 }}>Exit</span>
+              <X size={16} />
+              <span style={{ fontWeight: 700, fontSize: '13px' }}>Exit</span>
             </button>
           </div>
         </div>

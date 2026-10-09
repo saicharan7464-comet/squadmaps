@@ -227,8 +227,8 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(8, 13, 22, 0.82)',
+        backdropFilter: 'blur(10px)',
         zIndex: 'var(--z-modal)',
         display: 'flex',
         alignItems: 'center',
@@ -238,34 +238,59 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
       onClick={onClose}
     >
       <div
-        className="glass-panel animate-fade-in"
+        className="surface-card animate-fade-in"
         style={{
           width: '100%',
-          maxWidth: '520px',
+          maxWidth: '540px',
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '28px',
-          backgroundColor: 'var(--bg-secondary)',
-          border: '1px solid var(--border-medium)'
+          boxShadow: 'var(--shadow-xl)',
+          position: 'relative'
         }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="wizard-title"
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '22px' }}>
           <div>
-            <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--accent-cyan)', letterSpacing: '1px' }}>
-              STEP {step} OF 5
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <span className="badge badge-cyan" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>
+                STEP {step} OF 5
+              </span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <div
+                    key={s}
+                    style={{
+                      width: '18px',
+                      height: '3px',
+                      borderRadius: '2px',
+                      backgroundColor: s <= step ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+                      transition: 'background-color 0.2s'
+                    }}
+                  />
+                ))}
+              </div>
             </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>
-              {step === 1 && 'Create Your Squad'}
-              {step === 2 && 'Choose your vehicle mode'}
-              {step === 3 && 'Calculating best routes...'}
-              {step === 4 && 'Select your squad route'}
-              {step === 5 && 'Squad Ready! Invite your friends'}
+            <h2 id="wizard-title" style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.3px' }}>
+              {step === 1 && 'Create Convoy Squad'}
+              {step === 2 && 'Select Vehicle Mode'}
+              {step === 3 && 'Calculating Best Routes...'}
+              {step === 4 && 'Choose Squad Route'}
+              {step === 5 && 'Squad Ready! Invite Convoy'}
             </h2>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
-            <X size={20} />
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-icon"
+            aria-label="Close dialog"
+            style={{ width: '36px', height: '36px', color: 'var(--text-secondary)' }}
+          >
+            <X size={18} />
           </button>
         </div>
 
@@ -278,96 +303,62 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
             {/* Host Identity & Squad Name Card */}
             <div
-              className="glass-card"
+              className="elevated-card"
               style={{
-                padding: '16px',
+                padding: '18px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '14px',
-                border: '1px solid var(--border-medium)',
-                backgroundColor: 'rgba(21, 29, 44, 0.7)'
+                border: '1px solid var(--border-subtle)'
               }}
             >
               {/* Host Name Field */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <label htmlFor="wizard-host-name" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <User size={15} color="var(--accent-cyan)" />
                     <span>Your Host Name</span>
                   </label>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      fontWeight: 800,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      padding: '2px 8px',
-                      borderRadius: '999px',
-                      backgroundColor: 'rgba(0, 240, 255, 0.15)',
-                      color: 'var(--accent-cyan)',
-                      border: '1px solid rgba(0, 240, 255, 0.3)'
-                    }}
-                  >
+                  <span className="badge badge-cyan" style={{ fontSize: '10px' }}>
                     Convoy Lead
                   </span>
                 </div>
                 <input
+                  id="wizard-host-name"
                   type="text"
                   value={hostName}
                   onChange={(e) => setHostName(e.target.value)}
-                  placeholder="Enter your name (e.g. Alex, Turbo Comet)"
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'var(--bg-primary)',
-                    border: '1px solid var(--border-medium)',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    outline: 'none',
-                    transition: 'border-color 0.2s'
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent-cyan)')}
-                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-medium)')}
+                  placeholder="Enter your callsign (e.g. Alex, Scout-1)"
+                  className="input-base"
+                  style={{ width: '100%', fontSize: '14px', fontWeight: 600 }}
+                  autoComplete="nickname"
                 />
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                  This name will be visible to all members on the live GPS convoy map.
+                  This name will be broadcast to all convoy members on the live GPS map.
                 </span>
               </div>
 
               {/* Squad Name Field */}
               <div>
-                <label style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                <label htmlFor="wizard-squad-name" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                   <Flag size={15} color="var(--accent-cyan)" />
                   <span>Squad / Trip Name</span>
                 </label>
                 <input
+                  id="wizard-squad-name"
                   type="text"
                   value={squadName}
                   onChange={(e) => setSquadName(e.target.value)}
-                  placeholder={selectedPlace ? `Trip to ${selectedPlace.name}` : "e.g. Hyderabad Airport Run or Goa Trip"}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'var(--bg-primary)',
-                    border: '1px solid var(--border-medium)',
-                    color: '#FFFFFF',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    outline: 'none',
-                    transition: 'border-color 0.2s'
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = 'var(--accent-cyan)')}
-                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-medium)')}
+                  placeholder={selectedPlace ? `Trip to ${selectedPlace.name}` : "e.g. Weekend Coastal Run or Mountain Trail"}
+                  className="input-base"
+                  style={{ width: '100%', fontSize: '14px', fontWeight: 600 }}
                 />
               </div>
             </div>
 
             {/* Destination Selection */}
             <div>
-              <label style={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <MapPin size={15} color="var(--accent-cyan)" />
                 <span>Destination</span>
               </label>
@@ -383,15 +374,14 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                 </div>
               ) : (
                 <div
-                  className="glass-card animate-fade-in"
+                  className="elevated-card animate-fade-in"
                   style={{
                     padding: '14px 16px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     border: '1.5px solid var(--accent-cyan)',
-                    backgroundColor: 'rgba(0, 240, 255, 0.08)',
-                    borderRadius: 'var(--radius-sm)'
+                    backgroundColor: 'rgba(0, 217, 232, 0.08)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
@@ -399,22 +389,22 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                       style={{
                         width: '40px',
                         height: '40px',
-                        borderRadius: '10px',
-                        backgroundColor: 'rgba(0, 240, 255, 0.2)',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: 'rgba(0, 217, 232, 0.16)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0
                       }}
                     >
-                      <MapPin size={22} color="var(--accent-cyan)" />
+                      <MapPin size={20} color="var(--accent-cyan)" />
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div
                         style={{
                           fontSize: '15px',
                           fontWeight: 800,
-                          color: '#FFFFFF',
+                          color: 'var(--text-primary)',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap'
@@ -449,7 +439,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
             </div>
 
             {/* Bottom Continue Button */}
-            <div style={{ marginTop: '4px' }}>
+            <div style={{ marginTop: '6px' }}>
               <button
                 type="button"
                 disabled={!selectedPlace || !hostName.trim()}
@@ -470,10 +460,10 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
               </button>
 
               {(!selectedPlace || !hostName.trim()) && (
-                <p style={{ fontSize: '12px', color: 'var(--accent-amber)', textAlign: 'center', marginTop: '8px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--accent-amber)', textAlign: 'center', marginTop: '10px' }}>
                   {!hostName.trim()
-                    ? '⚠️ Please enter your host name above to continue.'
-                    : '📍 Please search and select a destination above to continue.'}
+                    ? '⚠️ Please enter your host callsign above to proceed.'
+                    : '📍 Please search and select a destination above to proceed.'}
                 </p>
               )}
             </div>
@@ -484,38 +474,65 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
         {step === 2 && selectedPlace && (
           <div>
             <div
+              className="elevated-card"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--bg-card)',
+                gap: '12px',
+                padding: '12px 16px',
                 marginBottom: '16px'
               }}
             >
-              <Flag size={18} color="var(--accent-cyan)" />
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF' }}>{selectedPlace.name}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{selectedPlace.address}</div>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'rgba(0, 217, 232, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <Flag size={18} color="var(--accent-cyan)" />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedPlace.name}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedPlace.address}
+                </div>
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {VEHICLE_MODES.map((mode) => {
                 const Icon = mode.icon;
+                const isSelected = vehicleMode === mode.id;
                 return (
                   <div
                     key={mode.id}
                     onClick={() => handleVehicleSelect(mode.id)}
-                    className="glass-card"
+                    className="elevated-card"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleVehicleSelect(mode.id);
+                      }
+                    }}
                     style={{
                       padding: '14px 18px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       cursor: 'pointer',
-                      border: vehicleMode === mode.id ? '1.5px solid var(--accent-cyan)' : '1px solid var(--border-subtle)'
+                      border: isSelected ? '1.5px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                      backgroundColor: isSelected ? 'rgba(0, 217, 232, 0.08)' : 'var(--bg-elevated)',
+                      transition: 'border-color 0.15s, background-color 0.15s'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -523,30 +540,31 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                         style={{
                           width: '42px',
                           height: '42px',
-                          borderRadius: '50%',
-                          backgroundColor: 'rgba(0, 240, 255, 0.1)',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: isSelected ? 'rgba(0, 217, 232, 0.2)' : 'rgba(255, 255, 255, 0.05)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center'
                         }}
                       >
-                        <Icon size={22} color="var(--accent-cyan)" />
+                        <Icon size={20} color={isSelected ? 'var(--accent-cyan)' : 'var(--text-secondary)'} />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '15px', color: '#FFFFFF' }}>{mode.label}</div>
+                        <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{mode.label}</div>
                         <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{mode.desc}</div>
                       </div>
                     </div>
-                    <ArrowRight size={18} color="var(--text-muted)" />
+                    <ArrowRight size={18} color={isSelected ? 'var(--accent-cyan)' : 'var(--text-muted)'} />
                   </div>
                 );
               })}
             </div>
 
             <button
+              type="button"
               onClick={() => setStep(1)}
               className="btn-secondary"
-              style={{ marginTop: '16px', width: '100%', fontSize: '13px' }}
+              style={{ marginTop: '16px', width: '100%', fontSize: '13px', padding: '12px' }}
             >
               <ArrowLeft size={16} /> Back to Search
             </button>
@@ -555,7 +573,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
         {/* STEP 3: Loading Routes */}
         {step === 3 && (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <div style={{ textAlign: 'center', padding: '48px 0' }}>
             <div
               style={{
                 width: '48px',
@@ -564,11 +582,14 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                 border: '3px solid var(--accent-cyan)',
                 borderTopColor: 'transparent',
                 animation: 'radarSweep 1s linear infinite',
-                margin: '0 auto 16px'
+                margin: '0 auto 18px'
               }}
             />
-            <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
-              Finding the fastest route to {selectedPlace?.name}...
+            <h3 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+              Calculating Optimal Routes
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Finding the fastest route for the convoy to {selectedPlace?.name}...
             </p>
           </div>
         )}
@@ -578,16 +599,15 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
           <div>
             {/* Convoy Summary Card */}
             <div
-              className="glass-card"
+              className="elevated-card"
               style={{
                 padding: '14px 16px',
                 marginBottom: '18px',
-                border: '1px solid var(--border-medium)',
+                border: '1px solid var(--border-subtle)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                backgroundColor: 'rgba(0, 240, 255, 0.05)',
-                borderRadius: 'var(--radius-sm)'
+                backgroundColor: 'rgba(0, 217, 232, 0.05)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
@@ -595,22 +615,22 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                   style={{
                     width: '38px',
                     height: '38px',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(0, 217, 232, 0.15)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0
                   }}
                 >
-                  <Users size={20} color="var(--accent-cyan)" />
+                  <Users size={18} color="var(--accent-cyan)" />
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div
                     style={{
                       fontSize: '15px',
                       fontWeight: 800,
-                      color: '#FFFFFF',
+                      color: 'var(--text-primary)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
@@ -639,12 +659,12 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                 className="btn-secondary"
                 style={{ fontSize: '12px', padding: '6px 12px', flexShrink: 0 }}
               >
-                Edit Info
+                Edit
               </button>
             </div>
 
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '10px' }}>
-              Route Options (Entire squad will follow this route)
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+              Route Options (Entire convoy syncs to this path)
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
@@ -654,24 +674,33 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                   <div
                     key={route.id}
                     onClick={() => setSelectedRouteIndex(idx)}
-                    className="glass-card"
+                    className="elevated-card"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedRouteIndex(idx);
+                      }
+                    }}
                     style={{
                       padding: '14px 18px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       cursor: 'pointer',
-                      border: isSelected ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
-                      backgroundColor: isSelected ? 'rgba(0, 240, 255, 0.08)' : 'var(--bg-glass-card)'
+                      border: isSelected ? '1.5px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                      backgroundColor: isSelected ? 'rgba(0, 217, 232, 0.08)' : 'var(--bg-elevated)',
+                      transition: 'border-color 0.15s, background-color 0.15s'
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: '15px', color: '#FFFFFF' }}>{route.name}</div>
-                      <div style={{ display: 'flex', gap: '8px', fontSize: '13px', marginTop: '2px' }}>
+                      <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-primary)' }}>{route.name}</div>
+                      <div style={{ display: 'flex', gap: '8px', fontSize: '13px', marginTop: '3px' }}>
                         <span className="font-mono text-green" style={{ fontWeight: 700 }}>
                           {formatDuration(route.duration)}
                         </span>
-                        <span style={{ color: 'var(--border-medium)' }}>•</span>
+                        <span style={{ color: 'var(--text-muted)' }}>•</span>
                         <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>
                           {formatDistance(route.distance)}
                         </span>
@@ -690,7 +719,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                           justifyContent: 'center'
                         }}
                       >
-                        <Check size={16} color="var(--text-inverse)" />
+                        <Check size={15} color="var(--text-inverse)" />
                       </div>
                     )}
                   </div>
@@ -702,10 +731,10 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
               <div
                 style={{
                   padding: '10px 14px',
-                  backgroundColor: 'rgba(255, 61, 113, 0.15)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
                   border: '1px solid var(--accent-red)',
                   borderRadius: 'var(--radius-sm)',
-                  color: '#FF3D71',
+                  color: 'var(--accent-red)',
                   fontSize: '13px',
                   marginBottom: '14px',
                   display: 'flex',
@@ -723,7 +752,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                 disabled={isSubmitting}
                 onClick={() => setStep(2)}
                 className="btn-secondary"
-                style={{ flex: 1, opacity: isSubmitting ? 0.6 : 1 }}
+                style={{ flex: 1, opacity: isSubmitting ? 0.6 : 1, padding: '14px' }}
               >
                 <ArrowLeft size={16} /> Back
               </button>
@@ -739,7 +768,8 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                   justifyContent: 'center',
                   gap: '8px',
                   opacity: isSubmitting || routes.length === 0 ? 0.7 : 1,
-                  cursor: isSubmitting || routes.length === 0 ? 'not-allowed' : 'pointer'
+                  cursor: isSubmitting || routes.length === 0 ? 'not-allowed' : 'pointer',
+                  padding: '14px'
                 }}
               >
                 {isSubmitting ? (
@@ -754,7 +784,7 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
                         animation: 'radarSweep 0.8s linear infinite'
                       }}
                     />
-                    <span>Creating Squad...</span>
+                    <span>Creating Convoy...</span>
                   </>
                 ) : (
                   <>
@@ -769,66 +799,79 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
         {/* STEP 5: Success & Invite Sharing */}
         {step === 5 && (
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign: 'center', padding: '12px 4px' }}>
             <div
               style={{
-                width: '60px',
-                height: '60px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(0, 230, 118, 0.15)',
+                backgroundColor: 'rgba(0, 214, 160, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 16px'
+                margin: '0 auto 16px',
+                border: '1px solid rgba(0, 214, 160, 0.3)'
               }}
             >
               <Check size={32} color="var(--accent-green)" />
             </div>
 
-            <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', marginBottom: '6px' }}>
+            <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
               Squad #{createdSquadId} Created!
             </h3>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              Share this invitation with your friends so they can join your convoy and navigate together on the same path.
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '22px', lineHeight: 1.5 }}>
+              Share this invitation with your crew. Everyone will join the same live navigation map and stay in GPS sync.
             </p>
 
             {/* QR Code */}
-            <div style={{ background: '#FFFFFF', padding: '14px', borderRadius: '16px', display: 'inline-block', marginBottom: '16px' }}>
+            <div
+              style={{
+                background: '#FFFFFF',
+                padding: '16px',
+                borderRadius: 'var(--radius-md)',
+                display: 'inline-block',
+                marginBottom: '16px',
+                boxShadow: 'var(--shadow-md)'
+              }}
+            >
               <QRCodeSVG value={inviteUrl} size={160} level="M" />
             </div>
 
             <div
-              className="glass-card font-mono"
+              className="elevated-card font-mono"
               style={{
-                padding: '10px 14px',
+                padding: '12px 14px',
                 fontSize: '13px',
                 color: 'var(--accent-cyan)',
-                marginBottom: '16px',
-                wordBreak: 'break-all'
+                marginBottom: '18px',
+                wordBreak: 'break-all',
+                textAlign: 'center',
+                border: '1px solid var(--border-subtle)'
               }}
             >
               {inviteUrl}
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-              <button onClick={handleCopy} className="btn-secondary" style={{ flex: 1, padding: '12px' }}>
-                {copied ? <Check size={18} color="var(--accent-green)" /> : <Copy size={18} />}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
+              <button type="button" onClick={handleCopy} className="btn-secondary" style={{ flex: 1, padding: '12px' }}>
+                {copied ? <Check size={16} color="var(--accent-green)" /> : <Copy size={16} />}
                 <span>{copied ? 'Copied' : 'Copy Link'}</span>
               </button>
 
               <button
+                type="button"
                 onClick={handleWhatsApp}
                 className="btn-secondary"
                 style={{
                   flex: 1,
                   padding: '12px',
-                  backgroundColor: 'rgba(37, 211, 102, 0.12)',
-                  borderColor: 'rgba(37, 211, 102, 0.4)',
+                  backgroundColor: 'rgba(37, 211, 102, 0.1)',
+                  borderColor: 'rgba(37, 211, 102, 0.3)',
                   color: '#25D366'
                 }}
               >
-                <Share2 size={18} />
+                <Share2 size={16} />
                 <span>WhatsApp</span>
               </button>
             </div>

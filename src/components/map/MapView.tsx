@@ -525,6 +525,16 @@ export const MapView: React.FC<MapViewProps> = ({
     }
   };
 
+  const handleFitRoute = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (routePolylineRef.current) {
+      map.fitBounds(routePolylineRef.current.getBounds(), { padding: [60, 60], maxZoom: 16 });
+    } else if (userLocation) {
+      map.flyTo([userLocation.lat, userLocation.lng], 15);
+    }
+  };
+
   const handleZoomIn = () => {
     mapInstanceRef.current?.zoomIn();
   };
@@ -550,52 +560,91 @@ export const MapView: React.FC<MapViewProps> = ({
         style={{
           position: 'absolute',
           right: '16px',
-          bottom: isNavigating ? '120px' : '90px',
+          bottom: isNavigating ? '130px' : '100px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px',
+          gap: '8px',
           zIndex: 'var(--z-controls)'
         }}
       >
         <button
+          type="button"
           className="btn-icon"
           onClick={handleRecenter}
           title="Recenter to my location"
-          style={{ background: userLocation ? 'var(--bg-glass)' : 'rgba(17,24,39,0.5)' }}
+          aria-label="Recenter to my location"
+          style={{ background: userLocation ? 'var(--bg-surface)' : 'rgba(16, 24, 39, 0.6)' }}
         >
-          <Navigation size={20} color="var(--accent-cyan)" />
+          <Navigation size={18} color="var(--accent-cyan)" />
         </button>
 
-        <button className="btn-icon" onClick={toggleLayer} title="Toggle Map Style">
-          <Layers size={20} />
+        {route && (
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={handleFitRoute}
+            title="Fit whole route on screen"
+            aria-label="Fit route"
+          >
+            <Compass size={18} color="var(--accent-green)" />
+          </button>
+        )}
+
+        <button
+          type="button"
+          className="btn-icon"
+          onClick={toggleLayer}
+          title={`Map Layer: ${mapLayer.toUpperCase()}`}
+          aria-label="Toggle map layer"
+          style={{ position: 'relative' }}
+        >
+          <Layers size={18} />
+          <span
+            style={{
+              position: 'absolute',
+              bottom: '4px',
+              fontSize: '8px',
+              fontWeight: 800,
+              color: 'var(--accent-cyan)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px'
+            }}
+          >
+            {mapLayer === 'satellite' ? 'Sat' : mapLayer === 'streets' ? 'Str' : 'Dark'}
+          </span>
         </button>
 
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            background: 'var(--bg-glass)',
+            background: 'var(--bg-surface)',
             borderRadius: 'var(--radius-full)',
             border: '1px solid var(--border-subtle)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            boxShadow: 'var(--shadow-sm)'
           }}
         >
           <button
+            type="button"
             className="btn-icon"
             onClick={handleZoomIn}
             title="Zoom in"
-            style={{ borderRadius: 0, border: 'none', height: '40px' }}
+            aria-label="Zoom in"
+            style={{ borderRadius: 0, border: 'none', height: '38px', width: '38px' }}
           >
-            <Plus size={18} />
+            <Plus size={16} />
           </button>
           <div style={{ height: '1px', background: 'var(--border-subtle)', width: '100%' }} />
           <button
+            type="button"
             className="btn-icon"
             onClick={handleZoomOut}
             title="Zoom out"
-            style={{ borderRadius: 0, border: 'none', height: '40px' }}
+            aria-label="Zoom out"
+            style={{ borderRadius: 0, border: 'none', height: '38px', width: '38px' }}
           >
-            <Minus size={18} />
+            <Minus size={16} />
           </button>
         </div>
       </div>

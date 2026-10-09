@@ -223,33 +223,36 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
       {/* Regroup & Privacy Bar */}
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
-          className="btn-primary"
+          type="button"
+          className="btn-secondary"
           onClick={onProposeRegroup}
           style={{
             flex: 1,
-            background: 'linear-gradient(135deg, #FFB300, #FF8F00)',
-            color: '#0A0E17',
+            backgroundColor: 'var(--accent-amber-dim)',
+            borderColor: 'rgba(245, 158, 11, 0.35)',
+            color: 'var(--accent-amber)',
             fontSize: '13px',
-            padding: '10px 14px'
+            padding: '10px 12px'
           }}
         >
-          <MapPin size={16} />
+          <MapPin size={15} />
           <span>Let's Meet Here</span>
         </button>
 
         <button
+          type="button"
           className="btn-secondary"
           onClick={onToggleSharing}
           title="Pause or resume sharing your live GPS location"
           style={{
             flex: 1,
             fontSize: '13px',
-            padding: '10px 14px',
-            borderColor: isSharingPaused ? 'var(--accent-amber)' : 'var(--border-subtle)',
-            color: isSharingPaused ? 'var(--accent-amber)' : 'var(--text-primary)'
+            padding: '10px 12px',
+            borderColor: isSharingPaused ? 'var(--accent-amber)' : 'var(--border-medium)',
+            color: isSharingPaused ? 'var(--accent-amber)' : 'var(--text-secondary)'
           }}
         >
-          {isSharingPaused ? <EyeOff size={16} /> : <Eye size={16} />}
+          {isSharingPaused ? <EyeOff size={15} /> : <Eye size={15} />}
           <span>{isSharingPaused ? 'Resume GPS' : 'Pause GPS'}</span>
         </button>
       </div>

@@ -65,8 +65,8 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(8, 13, 22, 0.82)',
+        backdropFilter: 'blur(10px)',
         zIndex: 'var(--z-modal)',
         display: 'flex',
         alignItems: 'center',
@@ -76,54 +76,80 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="glass-panel animate-fade-in"
+        className="surface-card animate-fade-in"
         style={{
           width: '100%',
           maxWidth: '520px',
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '24px',
-          backgroundColor: 'var(--bg-secondary)',
-          border: '1px solid var(--border-medium)'
+          boxShadow: 'var(--shadow-xl)'
         }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="host-controls-title"
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Settings size={22} color="var(--accent-cyan)" />
-            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF' }}>Squad Host Controls</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'rgba(0, 217, 232, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Settings size={20} color="var(--accent-cyan)" />
+            </div>
+            <div>
+              <h3 id="host-controls-title" style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                Squad Host Controls
+              </h3>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                Manage convoy settings and members
+              </span>
+            </div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
-            <X size={20} />
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-icon"
+            aria-label="Close host controls"
+            style={{ width: '34px', height: '34px', color: 'var(--text-secondary)' }}
+          >
+            <X size={18} />
           </button>
         </div>
 
         {/* Rename Squad */}
         <form onSubmit={handleRename} style={{ marginBottom: '20px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+          <label
+            htmlFor="host-squad-name"
+            style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}
+          >
             Squad Name
           </label>
           <div style={{ display: 'flex', gap: '8px' }}>
             <input
+              id="host-squad-name"
               type="text"
               value={squadName}
               onChange={(e) => setSquadName(e.target.value)}
+              className="input-base"
               style={{
                 flex: 1,
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-medium)',
-                color: '#FFFFFF',
-                fontSize: '14px',
-                outline: 'none'
+                fontSize: '14px'
               }}
             />
             <button
               type="submit"
               disabled={squadName === squad.name}
               className="btn-primary"
-              style={{ padding: '10px 16px', fontSize: '13px' }}
+              style={{ padding: '10px 16px', fontSize: '13px', flexShrink: 0 }}
             >
               Save
             </button>
@@ -132,29 +158,31 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
 
         {/* QR Code & Shareable Invitation */}
         <div
-          className="glass-card"
+          className="elevated-card"
           style={{
-            padding: '16px',
+            padding: '18px',
             marginBottom: '20px',
             textAlign: 'center',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center'
+            alignItems: 'center',
+            border: '1px solid var(--border-subtle)'
           }}
         >
           <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>
-            Scan QR Code to Join Squad
+            Scan QR Code to Join Convoy
           </div>
-          <div style={{ background: '#FFFFFF', padding: '12px', borderRadius: '12px', display: 'inline-block' }}>
+          <div style={{ background: '#FFFFFF', padding: '12px', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
             <QRCodeSVG value={inviteUrl} size={150} level="M" />
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 700, marginTop: '10px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 700, marginTop: '10px', wordBreak: 'break-all' }}>
             {inviteUrl}
           </div>
           <button
+            type="button"
             onClick={handleCopyLink}
             className="btn-secondary"
-            style={{ marginTop: '10px', fontSize: '12px', padding: '6px 14px' }}
+            style={{ marginTop: '12px', fontSize: '12px', padding: '8px 16px' }}
           >
             {copied ? <Check size={14} color="var(--accent-green)" /> : <Copy size={14} />}
             <span>{copied ? 'Copied' : 'Copy Invitation Link'}</span>
@@ -163,42 +191,53 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
 
         {/* Manage Members */}
         <div style={{ marginBottom: '24px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '10px' }}>
-            Manage Members ({members.length})
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+              Convoy Members ({members.length})
+            </span>
+            <span className="badge badge-cyan" style={{ fontSize: '10px' }}>
+              Host Privileges
+            </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {members.map((m) => (
               <div
                 key={m.userId}
+                className="elevated-card"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'var(--bg-card)'
+                  padding: '10px 14px'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <img
                     src={m.profileImage}
                     alt={m.name}
-                    style={{ width: '32px', height: '32px', borderRadius: '50%' }}
+                    style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1.5px solid var(--border-medium)' }}
                   />
-                  <span style={{ fontSize: '14px', fontWeight: 600, color: '#FFFFFF' }}>
-                    {m.name} {m.isHost && '(Host)'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {m.name}
+                    </span>
+                    {m.isHost && (
+                      <span className="badge badge-cyan" style={{ fontSize: '9px', padding: '2px 6px' }}>
+                        HOST
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {!m.isHost && m.userId !== currentUserId && (
                   <button
+                    type="button"
                     onClick={() => onRemoveMember(m.userId)}
                     title="Remove member from squad"
+                    className="btn-ghost"
                     style={{
-                      background: 'rgba(255, 61, 113, 0.15)',
                       color: 'var(--accent-red)',
                       padding: '6px 10px',
-                      borderRadius: '6px',
                       fontSize: '12px',
                       fontWeight: 600
                     }}
@@ -216,13 +255,15 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '16px' }}>
           {!confirmEnd ? (
             <button
+              type="button"
               onClick={() => setConfirmEnd(true)}
               className="btn-secondary"
               style={{
                 width: '100%',
-                backgroundColor: 'rgba(255, 61, 113, 0.12)',
-                borderColor: 'var(--accent-red)',
-                color: 'var(--accent-red)'
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                color: 'var(--accent-red)',
+                padding: '12px'
               }}
             >
               <AlertOctagon size={18} />
@@ -230,11 +271,12 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
             </button>
           ) : (
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '13px', color: 'var(--accent-red)', marginBottom: '10px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--accent-red)', marginBottom: '12px' }}>
                 Are you sure you want to end this squad? All members will be disconnected.
               </p>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button
+                  type="button"
                   onClick={handleEndSquad}
                   disabled={isEnding}
                   className="btn-primary"
@@ -243,6 +285,7 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
                   {isEnding ? 'Ending Squad...' : 'Yes, End Squad'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setConfirmEnd(false)}
                   disabled={isEnding}
                   className="btn-secondary"

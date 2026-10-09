@@ -48,8 +48,8 @@ export const RegroupModal: React.FC<RegroupModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
-        backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(8, 13, 22, 0.82)',
+        backdropFilter: 'blur(10px)',
         zIndex: 'var(--z-modal)',
         display: 'flex',
         alignItems: 'center',
@@ -59,47 +59,74 @@ export const RegroupModal: React.FC<RegroupModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="glass-panel animate-fade-in"
+        className="surface-card animate-fade-in"
         style={{
           width: '100%',
           maxWidth: '460px',
           padding: '24px',
-          backgroundColor: 'var(--bg-secondary)',
-          border: '1px solid var(--border-medium)'
+          boxShadow: 'var(--shadow-xl)'
         }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="regroup-modal-title"
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MapPin size={22} color="var(--accent-amber)" />
-            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF' }}>
-              Let's Meet Here (Regroup)
-            </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <MapPin size={20} color="var(--accent-amber)" />
+            </div>
+            <div>
+              <h3 id="regroup-modal-title" style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                Regroup Point
+              </h3>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                Coordinate a rest stop or meeting point
+              </span>
+            </div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', color: 'var(--text-muted)' }}>
-            <X size={20} />
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-icon"
+            aria-label="Close regroup modal"
+            style={{ width: '34px', height: '34px', color: 'var(--text-secondary)' }}
+          >
+            <X size={18} />
           </button>
         </div>
 
         {/* If an active regroup point is currently proposed */}
         {activeRegroupPoint && activeRegroupPoint.status === 'proposed' ? (
           <div
-            className="glass-card"
+            className="elevated-card"
             style={{
               padding: '16px',
               border: '1.5px solid var(--accent-amber)',
-              backgroundColor: 'rgba(255, 179, 0, 0.08)',
+              backgroundColor: 'rgba(245, 158, 11, 0.08)',
               marginBottom: '20px'
             }}
           >
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-amber)', textTransform: 'uppercase' }}>
-              Current Meeting Proposal
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="badge badge-amber" style={{ fontSize: '10px' }}>
+                ACTIVE PROPOSAL
+              </span>
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', marginTop: '4px' }}>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '8px' }}>
               "{activeRegroupPoint.name}"
             </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Suggested by: {activeRegroupPoint.suggestedByName}
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Suggested by: <strong style={{ color: 'var(--text-primary)' }}>{activeRegroupPoint.suggestedByName}</strong>
             </div>
 
             {/* Voting Tally */}
@@ -122,14 +149,16 @@ export const RegroupModal: React.FC<RegroupModalProps> = ({
             {/* Vote Buttons */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
               <button
-                className="btn-success"
+                type="button"
+                className="btn-secondary"
                 onClick={() => onVote(true)}
                 style={{
                   flex: 1,
                   padding: '10px',
                   fontSize: '14px',
-                  opacity: userVote === true ? 1 : 0.85,
-                  outline: userVote === true ? '2px solid #FFFFFF' : 'none'
+                  borderColor: userVote === true ? 'var(--accent-green)' : 'var(--border-subtle)',
+                  color: userVote === true ? 'var(--accent-green)' : 'var(--text-primary)',
+                  backgroundColor: userVote === true ? 'rgba(0, 214, 160, 0.12)' : 'var(--bg-elevated)'
                 }}
               >
                 <ThumbsUp size={16} />
@@ -137,16 +166,16 @@ export const RegroupModal: React.FC<RegroupModalProps> = ({
               </button>
 
               <button
+                type="button"
                 className="btn-secondary"
                 onClick={() => onVote(false)}
                 style={{
                   flex: 1,
                   padding: '10px',
                   fontSize: '14px',
-                  backgroundColor: 'rgba(255, 61, 113, 0.15)',
-                  borderColor: 'var(--accent-red)',
-                  color: 'var(--accent-red)',
-                  opacity: userVote === false ? 1 : 0.85
+                  backgroundColor: userVote === false ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-elevated)',
+                  borderColor: userVote === false ? 'var(--accent-red)' : 'var(--border-subtle)',
+                  color: userVote === false ? 'var(--accent-red)' : 'var(--text-secondary)'
                 }}
               >
                 <ThumbsDown size={16} />
@@ -158,11 +187,11 @@ export const RegroupModal: React.FC<RegroupModalProps> = ({
 
         {/* Suggest new meeting point */}
         <div>
-          <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-            Suggest a New Regroup Location
+          <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+            Broadcast New Meeting Point
           </h4>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '14px' }}>
-            Broadcast a temporary meeting point to all squad members to regroup or take a break.
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.4 }}>
+            Propose your current GPS location as a stop to all squad members to regroup or take a break.
           </p>
 
           <form onSubmit={handlePropose} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -170,16 +199,11 @@ export const RegroupModal: React.FC<RegroupModalProps> = ({
               type="text"
               value={pointName}
               onChange={(e) => setPointName(e.target.value)}
-              placeholder="e.g. Highway Food Court, Fuel Station, Toll Plaza"
+              placeholder="e.g. Highway Food Court, Fuel Station, Rest Area"
+              className="input-base"
               style={{
                 width: '100%',
-                padding: '12px 14px',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-medium)',
-                color: '#FFFFFF',
-                fontSize: '14px',
-                outline: 'none'
+                fontSize: '14px'
               }}
             />
 
@@ -190,9 +214,10 @@ export const RegroupModal: React.FC<RegroupModalProps> = ({
               style={{
                 width: '100%',
                 padding: '12px',
-                background: 'linear-gradient(135deg, #FFB300, #FF8F00)',
-                color: '#0A0E17',
-                fontWeight: 800
+                backgroundColor: 'var(--accent-amber)',
+                color: '#080D16',
+                fontWeight: 800,
+                opacity: !pointName.trim() || !userLocation ? 0.6 : 1
               }}
             >
               <MapPin size={18} />

@@ -205,7 +205,7 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
       {/* Dropdown Results */}
       {isOpen && results.length > 0 && (
         <div
-          className="glass-panel animate-fade-in"
+          className="surface-card animate-fade-in"
           style={{
             position: 'absolute',
             top: 'calc(100% + 4px)',
@@ -214,7 +214,9 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
             maxHeight: '340px',
             overflowY: 'auto',
             padding: '8px',
-            boxShadow: 'var(--shadow-lg)'
+            boxShadow: 'var(--shadow-lg)',
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-medium)'
           }}
         >
           {results.map((place) => (
@@ -227,7 +229,8 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
                 padding: '10px 12px',
                 borderRadius: 'var(--radius-sm)',
                 cursor: 'pointer',
-                transition: 'background 0.15s'
+                transition: 'background 0.15s',
+                marginBottom: '4px'
               }}
               className="glass-card"
               onClick={() => {
@@ -242,7 +245,7 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
                     style={{
                       fontWeight: 700,
                       fontSize: '14px',
-                      color: '#FFFFFF',
+                      color: 'var(--text-primary)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
@@ -283,6 +286,7 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
 
                 {isSquadActive && onSuggestToSquad && (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSuggestToSquad(place);
@@ -293,9 +297,9 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
                       fontWeight: 700,
                       padding: '4px 8px',
                       borderRadius: '6px',
-                      backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                      backgroundColor: 'var(--accent-purple-dim)',
                       color: 'var(--accent-purple)',
-                      border: '1px solid var(--accent-purple)'
+                      border: '1px solid rgba(139, 92, 246, 0.4)'
                     }}
                   >
                     Suggest
@@ -304,6 +308,28 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Empty Search Feedback */}
+      {isOpen && !isLoading && results.length === 0 && query.trim().length > 2 && (
+        <div
+          className="surface-card animate-fade-in"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            padding: '14px 16px',
+            textAlign: 'center',
+            color: 'var(--text-muted)',
+            fontSize: '13px',
+            boxShadow: 'var(--shadow-md)',
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-medium)'
+          }}
+        >
+          No destinations found matching "{query}".
         </div>
       )}
     </div>

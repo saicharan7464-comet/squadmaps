@@ -117,19 +117,20 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
 
   return (
     <div
-      className="glass-card"
+      className="surface-card"
       style={{
-        padding: '14px 16px',
+        padding: '12px 14px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '12px',
-        borderLeft: `4px solid ${member.color || 'var(--accent-cyan)'}`
+        borderLeft: `3px solid ${member.color || 'var(--accent-cyan)'}`,
+        backgroundColor: 'var(--bg-surface)'
       }}
     >
       {/* Left: Avatar & Identity */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-        <div style={{ position: 'relative', width: '42px', height: '42px', flexShrink: 0 }}>
+        <div style={{ position: 'relative', width: '40px', height: '40px', flexShrink: 0 }}>
           <img
             src={member.profileImage}
             alt={member.name}
@@ -139,7 +140,7 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
               borderRadius: '50%',
               border: `2px solid ${member.color || 'var(--accent-cyan)'}`,
               objectFit: 'cover',
-              background: 'var(--bg-tertiary)'
+              background: '#101827'
             }}
           />
           {member.online && !isPaused && (
@@ -148,11 +149,11 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
                 position: 'absolute',
                 bottom: '0',
                 right: '0',
-                width: '12px',
-                height: '12px',
+                width: '10px',
+                height: '10px',
                 borderRadius: '50%',
                 backgroundColor: 'var(--accent-green)',
-                border: '2px solid var(--bg-card)'
+                border: '2px solid var(--bg-surface)'
               }}
             />
           )}
@@ -163,8 +164,8 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
             <span
               style={{
                 fontWeight: 700,
-                fontSize: '15px',
-                color: '#FFFFFF',
+                fontSize: '14px',
+                color: 'var(--text-primary)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
@@ -178,7 +179,7 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
                   fontSize: '9px',
                   fontWeight: 800,
                   textTransform: 'uppercase',
-                  background: 'rgba(0, 240, 255, 0.2)',
+                  background: 'var(--accent-cyan-dim)',
                   color: 'var(--accent-cyan)',
                   padding: '1px 5px',
                   borderRadius: '4px'
@@ -189,7 +190,7 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
             {renderStatusBadge()}
 
             {/* Inter-Member Distance from User */}
@@ -197,7 +198,7 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
               <span
                 className="font-mono"
                 style={{
-                  fontSize: '12px',
+                  fontSize: '11px',
                   color: 'var(--accent-cyan)',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -205,9 +206,9 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
                   fontWeight: 600
                 }}
               >
-                {member.relativePosition === 'ahead' && <ArrowUp size={12} color="var(--accent-green)" />}
-                {member.relativePosition === 'behind' && <ArrowDown size={12} color="var(--accent-red)" />}
-                {formatDistance(member.distanceFromUser)} away
+                {member.relativePosition === 'ahead' && <ArrowUp size={11} color="var(--accent-green)" />}
+                {member.relativePosition === 'behind' && <ArrowDown size={11} color="var(--accent-red)" />}
+                {formatDistance(member.distanceFromUser)}
               </span>
             )}
           </div>
@@ -215,24 +216,26 @@ export const SquadMemberCard: React.FC<SquadMemberCardProps> = ({
       </div>
 
       {/* Right: Real-Time Metrics & Locate Button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
         <div style={{ textAlign: 'right' }}>
-          <div className="font-mono text-cyan" style={{ fontSize: '13px', fontWeight: 700 }}>
+          <div className="font-mono" style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-cyan)' }}>
             {member.eta || 'N/A'}
           </div>
-          <div className="font-mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+          <div className="font-mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
             {formatDistance(member.distanceRemaining)} • {formatSpeed(member.speed)}
           </div>
         </div>
 
         {/* Locate / Watch Button */}
         <button
+          type="button"
           className="btn-icon"
           onClick={() => onLocate(member)}
-          title={`Locate ${member.name} on map`}
-          style={{ width: '38px', height: '38px' }}
+          title={`Focus ${member.name} on map`}
+          aria-label={`Focus ${member.name} on map`}
+          style={{ width: '36px', height: '36px' }}
         >
-          <Locate size={18} color="var(--accent-cyan)" />
+          <Locate size={16} color="var(--accent-cyan)" />
         </button>
       </div>
     </div>
