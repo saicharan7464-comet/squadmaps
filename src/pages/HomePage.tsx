@@ -22,9 +22,6 @@ import {
 import { useAuth } from '../features/auth/AuthContext';
 import { parseSquadId } from '../utils/inviteUrl';
 import { QRScannerModal } from '../components/common/QRScannerModal';
-import { UserBadge } from '../components/auth/UserBadge';
-import { GuestRestrictionModal } from '../components/auth/GuestRestrictionModal';
-import { AuthScreen } from '../components/auth/AuthScreen';
 
 interface HomePageProps {
   onOpenMap?: () => void;
@@ -83,18 +80,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [joinUserName, setJoinUserName] = useState(user?.name || '');
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const [showGuestRestriction, setShowGuestRestriction] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const [feedback, setFeedback] = useState<{ text: string; isError?: boolean } | null>(null);
-
-  const handleCreateSquadClick = () => {
-    if (user?.isGuest) {
-      setShowGuestRestriction(true);
-    } else {
-      onCreateSquad();
-    }
-  };
 
   useEffect(() => {
     if (user?.name && !joinUserName) {
@@ -205,17 +191,14 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <UserBadge onTriggerUpgrade={() => setShowUpgradeModal(true)} />
-          <button
-            onClick={onOpenMap || onStartNavigating}
-            className="btn-secondary"
-            style={{ fontSize: '13px', padding: '8px 16px', borderRadius: 'var(--radius-full)' }}
-          >
-            <span>Open Map</span>
-            <ChevronRight size={16} />
-          </button>
-        </div>
+        <button
+          onClick={onOpenMap || onStartNavigating}
+          className="btn-secondary"
+          style={{ fontSize: '13px', padding: '8px 16px', borderRadius: 'var(--radius-full)' }}
+        >
+          <span>Open Map</span>
+          <ChevronRight size={16} />
+        </button>
       </header>
 
       {/* Hero Section */}
@@ -283,7 +266,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           }}
         >
           <button
-            onClick={handleCreateSquadClick}
+            onClick={onCreateSquad}
             className="btn-primary"
             style={{ padding: '16px 28px', fontSize: '16px', borderRadius: 'var(--radius-sm)' }}
           >
@@ -576,58 +559,6 @@ export const HomePage: React.FC<HomePageProps> = ({
         onClose={() => setShowScanner(false)}
         onScanSuccess={handleScanSuccess}
       />
-
-      {/* Guest Restriction Modal */}
-      <GuestRestrictionModal
-        isOpen={showGuestRestriction}
-        onClose={() => setShowGuestRestriction(false)}
-        featureTitle="Host a Squad Convoy"
-        featureDescription="Creating and hosting a persistent squad convoy requires an account to preserve your route settings and members list."
-        onCreateAccount={() => {
-          setShowGuestRestriction(false);
-          setShowUpgradeModal(true);
-        }}
-        onLogin={() => {
-          setShowGuestRestriction(false);
-          setShowLoginModal(true);
-        }}
-        onProceedAsGuest={() => {
-          setShowGuestRestriction(false);
-          onCreateSquad();
-        }}
-      />
-
-      {/* Upgrade / Login Modal */}
-      {(showUpgradeModal || showLoginModal) && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 'var(--z-modal)',
-            backgroundColor: 'rgba(10, 14, 23, 0.85)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px',
-            overflowY: 'auto'
-          }}
-        >
-          <AuthScreen
-            initialView={showUpgradeModal ? 'signup' : 'login'}
-            isUpgradeMode={showUpgradeModal}
-            onClose={() => {
-              setShowUpgradeModal(false);
-              setShowLoginModal(false);
-            }}
-            onSuccess={() => {
-              setShowUpgradeModal(false);
-              setShowLoginModal(false);
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 };
