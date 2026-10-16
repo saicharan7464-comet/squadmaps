@@ -140,13 +140,9 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({ isOpen, onCl
 
   return (
     <div
+      className="modal-overlay"
       style={{
-        position: 'fixed',
-        inset: 0,
         zIndex: 9999,
-        backgroundColor: 'rgba(8, 13, 22, 0.85)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -155,15 +151,13 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({ isOpen, onCl
       onClick={onClose}
     >
       <div
-        className="surface-card animate-scale-in"
+        className="cockpit-card animate-modal-in"
         style={{
           width: '100%',
           maxWidth: '420px',
           padding: '24px',
           position: 'relative',
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-medium)',
-          boxShadow: 'var(--shadow-elevated)'
+          boxShadow: 'var(--shadow-xl)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -299,18 +293,19 @@ export const UserAccountModal: React.FC<UserAccountModalProps> = ({ isOpen, onCl
             {user?.isGuest && (
               <div
                 style={{
-                  padding: '14px',
+                  padding: '16px',
                   backgroundColor: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-medium)',
-                  borderRadius: 'var(--radius-sm)',
-                  marginBottom: '20px'
+                  border: '1px solid rgba(0, 102, 255, 0.25)',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '20px',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
                 }}
               >
-                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                  Save your journey history
+                <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px', letterSpacing: '-0.01em' }}>
+                  Save your convoy records
                 </div>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 12px', lineHeight: 1.4 }}>
-                  You are currently exploring as a Guest. Create a registered account to sync squad journeys across devices.
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '0 0 12px', lineHeight: 1.45 }}>
+                  You are currently driving as a Guest. Create a registered account to sync squad journeys and telemetry history across all devices.
                 </p>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button

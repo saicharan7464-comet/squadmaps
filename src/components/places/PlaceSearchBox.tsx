@@ -102,16 +102,18 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
     <div ref={containerRef} style={{ position: 'relative', width: '100%', minWidth: 0, zIndex: 'var(--z-controls)' }}>
       {/* Search Input Bar */}
       <div
-        className="glass-panel"
+        className="cockpit-card"
         style={{
           display: 'flex',
           alignItems: 'center',
-          padding: '8px 12px',
-          gap: '8px',
-          backgroundColor: 'var(--bg-glass-card)',
+          padding: '8px 14px',
+          gap: '10px',
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-medium)',
           width: '100%',
           minWidth: 0,
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          boxShadow: 'var(--shadow-md)'
         }}
       >
         <Search size={18} color="var(--accent-cyan)" style={{ flexShrink: 0 }} />
@@ -151,8 +153,13 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
         )}
 
         {query && (
-          <button onClick={handleClear} style={{ background: 'transparent', color: 'var(--text-muted)', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <X size={18} />
+          <button
+            onClick={handleClear}
+            className="btn-icon"
+            style={{ width: '24px', height: '24px', color: 'var(--text-muted)', flexShrink: 0 }}
+            aria-label="Clear search"
+          >
+            <X size={16} />
           </button>
         )}
       </div>
@@ -186,15 +193,18 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
                   padding: '6px 12px',
                   borderRadius: '999px',
                   fontSize: '12px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   whiteSpace: 'nowrap',
-                  background: isSelected ? 'var(--accent-cyan)' : 'var(--bg-glass)',
-                  color: isSelected ? 'var(--text-inverse)' : 'var(--text-primary)',
-                  border: `1px solid ${isSelected ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
-                  boxShadow: 'var(--shadow-sm)'
+                  background: isSelected
+                    ? 'linear-gradient(135deg, #0066FF 0%, #0052CC 100%)'
+                    : 'var(--bg-surface)',
+                  color: isSelected ? '#FFFFFF' : 'var(--text-secondary)',
+                  border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
+                  boxShadow: isSelected ? '0 0 12px rgba(0, 102, 255, 0.35)' : 'var(--shadow-sm)',
+                  transition: 'all 0.15s ease'
                 }}
               >
-                <Icon size={14} />
+                <Icon size={13} color={isSelected ? 'var(--accent-cyan)' : 'currentColor'} />
                 <span>{cat.label}</span>
               </button>
             );
@@ -205,18 +215,19 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
       {/* Dropdown Results */}
       {isOpen && results.length > 0 && (
         <div
-          className="surface-card animate-fade-in"
+          className="cockpit-card animate-modal-in"
           style={{
             position: 'absolute',
-            top: 'calc(100% + 4px)',
+            top: 'calc(100% + 6px)',
             left: 0,
             right: 0,
             maxHeight: '340px',
             overflowY: 'auto',
             padding: '8px',
-            boxShadow: 'var(--shadow-lg)',
+            boxShadow: 'var(--shadow-xl)',
             backgroundColor: 'var(--bg-surface)',
-            border: '1px solid var(--border-medium)'
+            border: '1px solid var(--border-medium)',
+            zIndex: 100
           }}
         >
           {results.map((place) => (
@@ -230,9 +241,10 @@ export const PlaceSearchBox: React.FC<PlaceSearchBoxProps> = ({
                 borderRadius: 'var(--radius-sm)',
                 cursor: 'pointer',
                 transition: 'background 0.15s',
-                marginBottom: '4px'
+                marginBottom: '4px',
+                border: '1px solid transparent'
               }}
-              className="glass-card"
+              className="cockpit-card-interactive"
               onClick={() => {
                 onSelectPlace(place);
                 setIsOpen(false);

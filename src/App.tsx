@@ -633,19 +633,20 @@ const NavigationCockpit: React.FC<{
           {/* Active Route Summary Bar if route selected */}
           {activeRoute && !squad && (
             <div
-              className="glass-panel animate-slide-down"
+              className="cockpit-card animate-slide-down"
               style={{
-                padding: '14px 16px',
+                padding: '16px 18px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '10px',
-                backgroundColor: 'var(--bg-glass-card)',
-                boxShadow: 'var(--shadow-lg)'
+                gap: '12px',
+                backgroundColor: 'rgba(10, 15, 29, 0.96)',
+                border: '1px solid var(--border-medium)',
+                boxShadow: 'var(--shadow-xl)'
               }}
             >
               {/* Transport Mode Selector */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '10px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Transport Mode
                 </span>
                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -666,19 +667,20 @@ const NavigationCockpit: React.FC<{
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
-                          padding: '4px 10px',
+                          gap: '5px',
+                          padding: '5px 12px',
                           borderRadius: '999px',
                           fontSize: '11px',
                           fontWeight: 700,
-                          backgroundColor: isSelected ? 'var(--accent-cyan)' : 'var(--bg-card)',
-                          color: isSelected ? 'var(--text-inverse)' : 'var(--text-secondary)',
-                          border: isSelected ? '1px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                          backgroundColor: isSelected ? 'var(--accent-primary)' : 'var(--bg-surface)',
+                          color: isSelected ? '#FFFFFF' : 'var(--text-secondary)',
+                          border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
+                          boxShadow: isSelected ? '0 0 10px rgba(0, 102, 255, 0.35)' : 'none',
                           cursor: 'pointer',
-                          transition: 'all 0.2s ease'
+                          transition: 'all 0.15s ease'
                         }}
                       >
-                        <Icon size={12} />
+                        <Icon size={12} color={isSelected ? 'var(--accent-cyan)' : 'currentColor'} />
                         <span>{mode.label}</span>
                       </button>
                     );
@@ -858,7 +860,7 @@ const NavigationCockpit: React.FC<{
       {/* DESKTOP SIDE PANEL: Squad & Inter-Member Distances (Desktop Only) */}
       {squad && (
         <div
-          className="glass-panel"
+          className="cockpit-card animate-modal-in"
           style={{
             position: 'absolute',
             top: '80px',
@@ -866,8 +868,9 @@ const NavigationCockpit: React.FC<{
             left: '20px',
             width: '380px',
             zIndex: 'var(--z-controls)',
-            backgroundColor: 'var(--bg-glass-card)',
+            backgroundColor: 'rgba(10, 15, 29, 0.94)',
             border: '1px solid var(--border-medium)',
+            boxShadow: 'var(--shadow-xl)',
             display: window.innerWidth > 768 && isSquadPanelOpen ? 'flex' : 'none',
             flexDirection: 'column',
             overflow: 'hidden'
@@ -893,7 +896,7 @@ const NavigationCockpit: React.FC<{
       {/* MOBILE BOTTOM SHEET: Squad Members & Distances (Mobile Only) */}
       {squad && window.innerWidth <= 768 && (!isNavigating || isMobileSheetExpanded) && (
         <div
-          className="glass-panel"
+          className="cockpit-card"
           style={{
             position: 'absolute',
             left: '12px',
@@ -905,8 +908,9 @@ const NavigationCockpit: React.FC<{
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            backgroundColor: 'var(--bg-secondary)',
-            border: '1px solid var(--border-medium)'
+            backgroundColor: 'rgba(10, 15, 29, 0.96)',
+            border: '1px solid var(--border-medium)',
+            boxShadow: 'var(--shadow-xl)'
           }}
         >
           {/* Drag / Expand Bar */}
@@ -923,7 +927,7 @@ const NavigationCockpit: React.FC<{
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Users size={18} color="var(--accent-cyan)" />
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF' }}>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.01em' }}>
                 Squad Convoy ({members.length})
               </span>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>•</span>
@@ -958,7 +962,7 @@ const NavigationCockpit: React.FC<{
         <>
           {/* Top Instruction & Place Search Banner */}
           <div
-            className="glass-panel animate-slide-down"
+            className="cockpit-card animate-slide-down"
             style={{
               position: 'absolute',
               top: '16px',
@@ -967,20 +971,32 @@ const NavigationCockpit: React.FC<{
               maxWidth: '560px',
               margin: '0 auto',
               zIndex: 'var(--z-modal)',
-              padding: '12px 14px',
+              padding: '14px 16px',
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
-              backgroundColor: 'rgba(17, 24, 39, 0.96)',
-              border: '1.5px solid var(--accent-amber)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7)'
+              backgroundColor: 'rgba(10, 15, 29, 0.96)',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              boxShadow: 'var(--shadow-xl)'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MapPin size={20} color="var(--accent-amber)" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <MapPin size={18} color="var(--accent-amber)" />
+                </div>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#FFFFFF' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.01em' }}>
                     Set Meeting Point
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
@@ -1017,7 +1033,7 @@ const NavigationCockpit: React.FC<{
           {/* Bottom Confirmation Card (When point is tapped) */}
           {selectedMeetingCoords && (
             <div
-              className="glass-panel animate-slide-up"
+              className="cockpit-card animate-slide-up"
               style={{
                 position: 'absolute',
                 bottom: '24px',
@@ -1027,9 +1043,9 @@ const NavigationCockpit: React.FC<{
                 margin: '0 auto',
                 zIndex: 'var(--z-modal)',
                 padding: '16px 20px',
-                backgroundColor: 'var(--bg-secondary)',
-                border: '1.5px solid var(--accent-amber)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.8)',
+                backgroundColor: 'rgba(10, 15, 29, 0.96)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                boxShadow: 'var(--shadow-xl)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px'
@@ -1138,17 +1154,16 @@ const NavigationCockpit: React.FC<{
         {!isNavigating && activeRoute && (
           <button
             onClick={handleStartNavigation}
-            className="btn-primary pulse-radar-green"
+            className="btn-primary"
             style={{
-              padding: '14px 22px',
-              fontSize: '16px',
+              padding: '14px 24px',
+              fontSize: '15px',
               borderRadius: 'var(--radius-full)',
-              background: 'linear-gradient(135deg, var(--accent-green), #00C853)',
-              color: '#0A0E17',
-              fontWeight: 800
+              fontWeight: 800,
+              boxShadow: 'var(--shadow-glow-blue)'
             }}
           >
-            <Navigation size={20} />
+            <Navigation size={18} />
             <span>Start Navigation</span>
           </button>
         )}
@@ -1166,36 +1181,26 @@ const NavigationCockpit: React.FC<{
       {/* FLOW B — SHORT CREATE SQUAD MODAL (FROM MAP SEARCH ROUTE) */}
       {isShortCreateSquadOpen && selectedDestination && activeRoute && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 'var(--z-modal)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px'
-          }}
+          className="modal-overlay"
           onClick={() => setIsShortCreateSquadOpen(false)}
         >
           <div
-            className="glass-panel animate-scale-up"
+            className="cockpit-card animate-modal-in"
             style={{
               width: '100%',
-              maxWidth: '440px',
-              padding: '28px',
-              backgroundColor: 'var(--bg-secondary)',
-              border: '1.5px solid var(--accent-cyan)',
-              boxShadow: 'var(--shadow-xl)',
+              maxWidth: '460px',
+              padding: '28px 24px',
+              backgroundColor: 'var(--bg-elevated)',
+              border: '1px solid var(--border-medium)',
+              boxShadow: 'var(--shadow-elevated)',
               borderRadius: 'var(--radius-lg)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <div>
-                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF' }}>Create Squad</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>Create Squad</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                   Trip to <strong style={{ color: 'var(--accent-cyan)' }}>{selectedDestination.name}</strong> • {Math.round(activeRoute.distance / 1000)} km
                 </p>
               </div>

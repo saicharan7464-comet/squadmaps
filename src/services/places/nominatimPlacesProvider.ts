@@ -59,7 +59,7 @@ export class NominatimPlacesProvider implements IPlacesProvider {
       const response = await fetch(url, {
         headers: {
           'Accept-Language': 'en',
-          'User-Agent': 'SquadNav-GroupNavigationApp/1.0'
+          'User-Agent': 'SquadMaps-GroupNavigationApp/1.0'
         }
       });
 
@@ -122,7 +122,7 @@ export class NominatimPlacesProvider implements IPlacesProvider {
       const response = await fetch(url, {
         headers: {
           'Accept-Language': 'en',
-          'User-Agent': 'SquadNav-GroupNavigationApp/1.0'
+          'User-Agent': 'SquadMaps-GroupNavigationApp/1.0'
         }
       });
       if (!response.ok) return 'Unknown location';

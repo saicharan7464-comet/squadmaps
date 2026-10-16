@@ -12,10 +12,8 @@ import {
   Eye,
   EyeOff,
   Settings,
-  X,
-  MessageCircle,
   MessageSquare,
-  HelpCircle
+  Radio
 } from 'lucide-react';
 
 interface SquadPanelProps {
@@ -59,7 +57,7 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
 
   const handleWhatsAppShare = () => {
     const text = encodeURIComponent(
-      `🚗 Join my Squad on SquadNav for our trip to ${squad.destination}!\n\nTap to join & track our convoy: ${inviteUrl}`
+      `🚗 Join our Squad on SquadMaps for our trip to ${squad.destination}!\n\nTap to join & track our convoy: ${inviteUrl}`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
@@ -71,33 +69,35 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
         flexDirection: 'column',
         height: '100%',
         overflowY: 'auto',
-        gap: '16px',
-        padding: '16px'
+        gap: '14px',
+        padding: '16px',
+        boxSizing: 'border-box'
       }}
     >
-      {/* Squad Header */}
-      <div className="glass-card" style={{ padding: '16px' }}>
+      {/* Squad Header Card */}
+      <div className="cockpit-card" style={{ padding: '16px 18px', backgroundColor: 'var(--bg-surface)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span
+                className="font-mono"
                 style={{
                   fontSize: '11px',
                   fontWeight: 800,
                   textTransform: 'uppercase',
                   color: 'var(--accent-cyan)',
-                  letterSpacing: '1px'
+                  letterSpacing: '0.8px'
                 }}
               >
                 SQUAD #{squad.squadId}
               </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>•</span>
+              <span style={{ fontSize: '12px', color: 'var(--border-medium)' }}>•</span>
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                Host: {squad.hostName}
+                Host: <strong style={{ color: 'var(--text-primary)' }}>{squad.hostName}</strong>
               </span>
             </div>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', marginTop: '2px' }}>
-              {squad.name}
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#FFFFFF', marginTop: '3px', margin: '3px 0 0' }}>
+              {squad.name || `Trip to ${squad.destination}`}
             </h2>
             <div
               style={{
@@ -110,7 +110,9 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
               }}
             >
               <Flag size={14} color="var(--accent-cyan)" />
-              <span>Destination: <strong>{squad.destination}</strong></span>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {squad.destination}
+              </span>
             </div>
           </div>
 
@@ -122,17 +124,17 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
                 title="Squad Chat Radio"
                 style={{ width: '36px', height: '36px', position: 'relative' }}
               >
-                <MessageSquare size={18} color="var(--accent-cyan)" />
+                <MessageSquare size={17} color="var(--accent-cyan)" />
                 {hasUnreadMessages && (
                   <span
                     style={{
                       position: 'absolute',
-                      top: '4px',
-                      right: '4px',
+                      top: '5px',
+                      right: '5px',
                       width: '7px',
                       height: '7px',
                       borderRadius: '50%',
-                      backgroundColor: 'var(--accent-green)'
+                      backgroundColor: 'var(--status-live)'
                     }}
                   />
                 )}
@@ -140,8 +142,8 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
             )}
 
             {isHost && onOpenSettings && (
-              <button className="btn-icon" onClick={onOpenSettings} title="Squad Settings" style={{ width: '36px', height: '36px' }}>
-                <Settings size={18} />
+              <button className="btn-icon" onClick={onOpenSettings} title="Host Settings" style={{ width: '36px', height: '36px' }}>
+                <Settings size={17} />
               </button>
             )}
           </div>
@@ -162,19 +164,19 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
             <div className="font-mono text-cyan" style={{ fontSize: '18px', fontWeight: 800 }}>
               {squadProgress.totalMembers}
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>Total</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>TOTAL</div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div className="font-mono text-green" style={{ fontSize: '18px', fontWeight: 800 }}>
               {squadProgress.arrivedCount}
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>Arrived</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>ARRIVED</div>
           </div>
           <div style={{ textAlign: 'center' }}>
-            <div className="font-mono text-cyan" style={{ fontSize: '18px', fontWeight: 800 }}>
+            <div className="font-mono text-blue" style={{ fontSize: '18px', fontWeight: 800 }}>
               {squadProgress.enRouteCount}
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>On Track</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>ON TRACK</div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div
@@ -182,23 +184,23 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
               style={{
                 fontSize: '18px',
                 fontWeight: 800,
-                color: squadProgress.behindCount > 0 ? 'var(--accent-red)' : 'var(--text-muted)'
+                color: squadProgress.behindCount > 0 ? 'var(--status-alert)' : 'var(--text-muted)'
               }}
             >
               {squadProgress.behindCount}
             </div>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>Behind</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700 }}>BEHIND</div>
           </div>
         </div>
 
-        {/* Action Buttons: Share & Regroup */}
+        {/* Action Buttons: Share & Invite */}
         <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
           <button
             className="btn-secondary"
             onClick={handleCopyLink}
-            style={{ flex: 1, padding: '9px 12px', fontSize: '13px' }}
+            style={{ flex: 1, padding: '8px 12px', fontSize: '12px' }}
           >
-            {copied ? <Check size={16} color="var(--accent-green)" /> : <Copy size={16} />}
+            {copied ? <Check size={15} color="var(--status-live)" /> : <Copy size={15} />}
             <span>{copied ? 'Copied!' : 'Copy Link'}</span>
           </button>
 
@@ -207,14 +209,14 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
             onClick={handleWhatsAppShare}
             style={{
               flex: 1,
-              padding: '9px 12px',
-              fontSize: '13px',
-              backgroundColor: 'rgba(37, 211, 102, 0.12)',
-              borderColor: 'rgba(37, 211, 102, 0.4)',
+              padding: '8px 12px',
+              fontSize: '12px',
+              backgroundColor: 'rgba(37, 211, 102, 0.1)',
+              borderColor: 'rgba(37, 211, 102, 0.3)',
               color: '#25D366'
             }}
           >
-            <Share2 size={16} />
+            <Share2 size={15} />
             <span>WhatsApp</span>
           </button>
         </div>
@@ -228,11 +230,12 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
           onClick={onProposeRegroup}
           style={{
             flex: 1,
-            backgroundColor: 'var(--accent-amber-dim)',
+            backgroundColor: 'var(--status-warning-dim)',
             borderColor: 'rgba(245, 158, 11, 0.35)',
-            color: 'var(--accent-amber)',
-            fontSize: '13px',
-            padding: '10px 12px'
+            color: 'var(--status-warning)',
+            fontSize: '12px',
+            padding: '10px 12px',
+            fontWeight: 700
           }}
         >
           <MapPin size={15} />
@@ -246,10 +249,11 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
           title="Pause or resume sharing your live GPS location"
           style={{
             flex: 1,
-            fontSize: '13px',
+            fontSize: '12px',
             padding: '10px 12px',
-            borderColor: isSharingPaused ? 'var(--accent-amber)' : 'var(--border-medium)',
-            color: isSharingPaused ? 'var(--accent-amber)' : 'var(--text-secondary)'
+            borderColor: isSharingPaused ? 'var(--status-warning)' : 'var(--border-medium)',
+            color: isSharingPaused ? 'var(--status-warning)' : 'var(--text-secondary)',
+            fontWeight: 700
           }}
         >
           {isSharingPaused ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -267,13 +271,16 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
             marginBottom: '10px'
           }}
         >
-          <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-secondary)' }}>
-            SQUAD MEMBERS ({members.length})
-          </h3>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Live GPS</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="status-beacon-live" />
+            <h3 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-secondary)', letterSpacing: '0.5px', textTransform: 'uppercase', margin: 0 }}>
+              SQUAD ROSTER ({members.length})
+            </h3>
+          </div>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>Live Telemetry</span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {members.map((member) => (
             <SquadMemberCard
               key={member.userId}

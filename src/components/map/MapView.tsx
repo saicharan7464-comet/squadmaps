@@ -140,9 +140,9 @@ export const MapView: React.FC<MapViewProps> = ({
 
     const userIconHtml = `
       <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
-        <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(0, 230, 118, 0.2); animation: pulseGreen 2s infinite;"></div>
-        <div style="position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #00E676; border: 3px solid #FFFFFF; box-shadow: 0 0 12px rgba(0, 230, 118, 0.8); display: flex; align-items: center; justify-content: center; transform: rotate(${userHeading}deg);">
-          <div style="width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 7px solid #0A0E17;"></div>
+        <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(0, 102, 255, 0.25); animation: pulseGlowBlue 2s infinite;"></div>
+        <div style="position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #0066FF; border: 3px solid #FFFFFF; box-shadow: 0 0 14px rgba(0, 102, 255, 0.9); display: flex; align-items: center; justify-content: center; transform: rotate(${userHeading}deg);">
+          <div style="width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 7px solid #FFFFFF;"></div>
         </div>
       </div>
     `;
@@ -295,18 +295,18 @@ export const MapView: React.FC<MapViewProps> = ({
 
       // Glow backing line
       const glowLine = L.polyline(latLngs, {
-        color: '#00F0FF',
-        weight: 9,
-        opacity: 0.35,
+        color: '#0052CC',
+        weight: 10,
+        opacity: 0.40,
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map);
 
       // Main core route line
       const mainLine = L.polyline(latLngs, {
-        color: '#00D8F6',
+        color: '#00D2FF',
         weight: 5,
-        opacity: 0.95,
+        opacity: 0.98,
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map);

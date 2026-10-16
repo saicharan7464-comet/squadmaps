@@ -1,63 +1,99 @@
-/* SquadMaps Design Tokens - Modern Navigation & Travel SaaS Theme */
+/* SquadMaps Automotive Cockpit Design Tokens */
 :root {
-  /* Color Palette - Night Driving & Cockpit Navigation Optimized */
-  --bg-primary: #080D16;
-  --bg-secondary: #101827;
-  --bg-surface: #151F30;
-  --bg-elevated: #1B2739;
-  --bg-card: #151F30;
-  --bg-card-hover: #19253B;
-  --bg-glass: rgba(16, 24, 39, 0.82);
-  --bg-glass-card: rgba(21, 31, 48, 0.88);
-  --bg-glass-elevated: rgba(27, 39, 57, 0.94);
+  /* Midnight Navy & Charcoal Canvas Hierarchy */
+  --bg-canvas: #050811;
+  --bg-primary: #0A0F1D;
+  --bg-secondary: #0F172A;
+  --bg-surface: #131E35;
+  --bg-elevated: #182642;
+  --bg-subtle: rgba(255, 255, 255, 0.03);
+  --bg-hover: rgba(255, 255, 255, 0.05);
 
-  /* Primary Accent & Signal Colors */
-  --accent-cyan: #00D9E8;
-  --accent-cyan-hover: #26E2F0;
-  --accent-cyan-dim: rgba(0, 217, 232, 0.12);
-  --accent-cyan-glow: rgba(0, 217, 232, 0.25);
+  --bg-card: #131E35;
+  --bg-card-hover: #17233D;
+  --bg-glass: rgba(10, 15, 29, 0.86);
+  --bg-glass-card: rgba(19, 30, 53, 0.90);
+  --bg-glass-elevated: rgba(24, 38, 66, 0.95);
 
-  --accent-green: #00D6A0;
-  --accent-green-hover: #20E6B2;
-  --accent-green-dim: rgba(0, 214, 160, 0.12);
+  /* Primary Electric Blue & Navigation Cyan Accents */
+  --accent-primary: #0066FF;
+  --accent-primary-hover: #1A75FF;
+  --accent-primary-dim: rgba(0, 102, 255, 0.12);
+  --accent-primary-glow: rgba(0, 102, 255, 0.28);
+  --accent-electric: #0066FF;
 
+  --accent-cyan: #00D2FF;
+  --accent-cyan-hover: #33DBFF;
+  --accent-cyan-dim: rgba(0, 210, 255, 0.12);
+  --accent-cyan-glow: rgba(0, 210, 255, 0.22);
+
+  /* Tactical Signal & Status Colors */
+  --status-live: #10B981;
+  --status-live-hover: #059669;
+  --status-live-dim: rgba(16, 185, 129, 0.14);
+  --accent-green: #10B981;
+  --accent-green-hover: #34D399;
+  --accent-green-dim: rgba(16, 185, 129, 0.14);
+
+  --status-connected: #00D2FF;
+  --status-connected-dim: rgba(0, 210, 255, 0.14);
+
+  --status-warning: #F59E0B;
+  --status-warning-hover: #D97706;
+  --status-warning-dim: rgba(245, 158, 11, 0.14);
   --accent-amber: #F59E0B;
   --accent-amber-hover: #FBBF24;
-  --accent-amber-dim: rgba(245, 158, 11, 0.12);
+  --accent-amber-dim: rgba(245, 158, 11, 0.14);
 
+  --status-alert: #EF4444;
+  --status-alert-hover: #DC2626;
+  --status-alert-dim: rgba(239, 68, 68, 0.14);
   --accent-red: #EF4444;
   --accent-red-hover: #F87171;
-  --accent-red-dim: rgba(239, 68, 68, 0.12);
+  --accent-red-dim: rgba(239, 68, 68, 0.14);
 
+  --status-arrived: #8B5CF6;
+  --status-arrived-dim: rgba(139, 92, 246, 0.14);
   --accent-purple: #8B5CF6;
-  --accent-purple-dim: rgba(139, 92, 246, 0.12);
+  --accent-purple-dim: rgba(139, 92, 246, 0.14);
+
+  --status-offline: #64748B;
+  --status-offline-dim: rgba(100, 116, 139, 0.14);
 
   /* Typography Colors */
-  --text-primary: #F4F7FB;
-  --text-secondary: #9AA7B8;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
   --text-muted: #64748B;
-  --text-inverse: #080D16;
+  --text-inverse: #050811;
 
   /* Borders & Dividers */
-  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(255, 255, 255, 0.14);
-  --border-active: rgba(0, 217, 232, 0.5);
-  --border-slate: #223147;
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --border-accent: rgba(0, 102, 255, 0.45);
+  --border-cyan: rgba(0, 210, 255, 0.40);
+  --border-active: rgba(0, 102, 255, 0.60);
+  --border-slate: #1E293B;
 
-  /* Spacing Scale (4, 8, 12, 16, 24, 32px) */
+  /* Spacing Scale (2, 4, 8, 12, 16, 20, 24, 32, 48px) */
+  --space-05: 2px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-12: 48px;
 
-  /* Shadows - Subtle & Restrained (No excessive neon blur) */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
-  --shadow-elevated: 0 12px 36px rgba(0, 0, 0, 0.65);
-  --shadow-glow-cyan: 0 0 16px rgba(0, 217, 232, 0.2);
+  /* Refined Automotive Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--border-subtle);
+  --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--border-subtle);
+  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-subtle);
+  --shadow-elevated: 0 20px 48px -6px rgba(0, 0, 0, 0.8), 0 0 0 1px var(--border-medium);
+  --shadow-glow-blue: 0 0 24px rgba(0, 102, 255, 0.25);
+  --shadow-glow-cyan: 0 0 20px rgba(0, 210, 255, 0.20);
+  --shadow-glow-green: 0 0 20px rgba(16, 185, 129, 0.20);
 
   /* Typography Families */
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -66,9 +102,10 @@
   /* Sizing & Touch Targets */
   --touch-target-min: 44px;
   --radius-xs: 6px;
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
   /* Navigation Z-Indices */

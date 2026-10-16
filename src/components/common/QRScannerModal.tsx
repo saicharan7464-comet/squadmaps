@@ -139,31 +139,22 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 'var(--z-modal)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px'
-      }}
+      className="modal-overlay"
       onClick={onClose}
     >
       <div
-        className="glass-panel animate-fade-in"
+        className="cockpit-card animate-modal-in"
         style={{
           maxWidth: '440px',
           width: '100%',
-          padding: '24px',
-          backgroundColor: 'var(--bg-secondary)',
+          padding: '28px 24px',
+          backgroundColor: 'var(--bg-elevated)',
           border: '1px solid var(--border-medium)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          position: 'relative'
+          position: 'relative',
+          boxShadow: 'var(--shadow-elevated)'
         }}
         onClick={(e) => e.stopPropagation()}
       >

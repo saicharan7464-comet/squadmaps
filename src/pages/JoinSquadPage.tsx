@@ -13,7 +13,10 @@ import {
   Flag,
   Navigation,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Users,
+  Compass,
+  ArrowRight
 } from 'lucide-react';
 
 interface JoinSquadPageProps {
@@ -66,7 +69,7 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
 
   const handleJoinClick = () => {
     if (!memberName.trim()) {
-      setNameError('Please enter your name to join the squad.');
+      setNameError('Please enter your name or callsign to join the squad.');
       return;
     }
     setNameError(null);
@@ -109,10 +112,10 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
       console.warn('Location permission or join error:', err);
       if (squad) {
         try {
-          const finalName = memberName.trim() || user?.name || 'Squad Member';
-          if (!user) await loginAsGuest(finalName);
-          else updateProfileName(finalName);
-          const joined = await joinSquad(squad.squadId, undefined, finalName);
+          const fallbackName = memberName.trim() || user?.name || 'Squad Member';
+          if (!user) await loginAsGuest(fallbackName);
+          else updateProfileName(fallbackName);
+          const joined = await joinSquad(squad.squadId, undefined, fallbackName);
           if (joined) {
             onJoinSuccess(squad);
           } else {
@@ -128,19 +131,18 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
     }
   };
 
-
   const renderVehicleIcon = (mode: string) => {
     switch (mode) {
       case 'motorcycle':
-        return <Bike size={20} color="var(--accent-cyan)" />;
+        return <Bike size={18} color="var(--accent-cyan)" />;
       case 'bicycle':
-        return <Bike size={20} color="var(--accent-cyan)" />;
+        return <Bike size={18} color="var(--accent-cyan)" />;
       case 'walking':
-        return <Footprints size={20} color="var(--accent-cyan)" />;
+        return <Footprints size={18} color="var(--accent-cyan)" />;
       case 'transit':
-        return <Bus size={20} color="var(--accent-cyan)" />;
+        return <Bus size={18} color="var(--accent-cyan)" />;
       default:
-        return <Car size={20} color="var(--accent-cyan)" />;
+        return <Car size={18} color="var(--accent-cyan)" />;
     }
   };
 
@@ -151,9 +153,11 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
           width: '100%',
           height: '100%',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--bg-primary)'
+          gap: '16px',
+          backgroundColor: 'var(--bg-canvas)'
         }}
       >
         <div
@@ -161,11 +165,14 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
             width: '44px',
             height: '44px',
             borderRadius: '50%',
-            border: '3px solid var(--accent-cyan)',
-            borderTopColor: 'transparent',
+            border: '3px solid rgba(0, 102, 255, 0.2)',
+            borderTopColor: 'var(--accent-primary)',
             animation: 'radarSweep 0.8s linear infinite'
           }}
         />
+        <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+          Locating Convoy Channel...
+        </span>
       </div>
     );
   }
@@ -179,29 +186,44 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'var(--bg-primary)',
-          padding: '20px'
+          backgroundColor: 'var(--bg-canvas)',
+          padding: '24px'
         }}
       >
         <div
-          className="glass-panel"
+          className="cockpit-card"
           style={{
-            maxWidth: '420px',
+            maxWidth: '440px',
             width: '100%',
-            padding: '32px',
+            padding: '36px 28px',
             textAlign: 'center',
-            backgroundColor: 'var(--bg-secondary)'
+            backgroundColor: 'var(--bg-surface)'
           }}
         >
-          <AlertCircle size={48} color="var(--accent-red)" style={{ margin: '0 auto 16px' }} />
+          <div
+            style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--status-alert-dim)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 18px',
+              color: 'var(--status-alert)'
+            }}
+          >
+            <AlertCircle size={28} />
+          </div>
           <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
             Squad Not Available
           </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '24px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.5, marginBottom: '28px' }}>
             {error || 'This squad invitation link is invalid or no longer active.'}
           </p>
           <button onClick={onCancel} className="btn-primary" style={{ width: '100%', padding: '12px' }}>
-            Go to Home
+            Return to Dashboard
           </button>
         </div>
       </div>
@@ -210,59 +232,67 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
 
   return (
     <div
+      className="page-scroll-container mobile-no-overflow"
       style={{
         width: '100%',
         height: '100%',
-        minHeight: '100vh',
+        minHeight: '100%',
+        overflowY: 'auto',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'var(--bg-primary)',
-        padding: '20px',
-        position: 'relative'
+        backgroundColor: 'var(--bg-canvas)',
+        padding: '24px 16px calc(88px + env(safe-area-inset-bottom, 16px))',
+        position: 'relative',
+        boxSizing: 'border-box'
       }}
     >
       <div
-        className="surface-card animate-fade-in"
+        className="cockpit-card animate-modal-in"
         style={{
-          maxWidth: '480px',
+          maxWidth: '500px',
           width: '100%',
-          padding: '32px',
-          boxShadow: 'var(--shadow-xl)'
+          padding: '32px 28px',
+          border: '1px solid var(--border-medium)',
+          boxShadow: 'var(--shadow-elevated)',
+          position: 'relative'
         }}
       >
         {/* Header Badge */}
-        <div style={{ marginBottom: '16px' }}>
-          <span className="badge badge-cyan" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>
-            CONVOY INVITATION
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <span className="badge badge-blue">CONVOY INVITATION</span>
+          <span className="font-mono text-cyan" style={{ fontSize: '12px', fontWeight: 700 }}>
+            CODE: {squad.squadId}
           </span>
         </div>
 
-        <h1 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.2, margin: 0 }}>
-          {squad.name}
+        <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.25, margin: 0 }}>
+          {squad.name || `Trip to ${squad.destination}`}
         </h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '6px', marginBottom: '24px' }}>
-          Hosted by <strong style={{ color: 'var(--accent-cyan)' }}>{squad.hostName}</strong>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '6px', marginBottom: '24px' }}>
+          Trip Leader: <strong style={{ color: 'var(--accent-cyan)' }}>{squad.hostName}</strong>
         </p>
 
-        {/* Squad Details Card */}
+        {/* Squad Details Cockpit Block */}
         <div
           className="elevated-card"
           style={{
-            padding: '20px',
+            padding: '18px 20px',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
-            marginBottom: '24px'
+            marginBottom: '24px',
+            backgroundColor: 'var(--bg-primary)'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
+                width: '38px',
+                height: '38px',
                 borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'rgba(0, 217, 232, 0.12)',
+                backgroundColor: 'rgba(0, 102, 255, 0.12)',
+                border: '1px solid rgba(0, 102, 255, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -272,8 +302,8 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
               <Flag size={18} color="var(--accent-cyan)" />
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Destination
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                DESTINATION
               </div>
               <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {squad.destination}
@@ -281,25 +311,25 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', paddingTop: '14px', borderTop: '1px solid var(--border-subtle)' }}>
             <div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.5px' }}>DISTANCE</div>
-              <div className="font-mono text-cyan" style={{ fontSize: '16px', fontWeight: 800 }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.5px' }}>ROUTE</div>
+              <div className="font-mono text-cyan" style={{ fontSize: '15px', fontWeight: 800 }}>
                 {formatDistance(squad.canonicalRoute.distance)}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.5px' }}>EST. TIME</div>
-              <div className="font-mono text-green" style={{ fontSize: '16px', fontWeight: 800 }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.5px' }}>EST. DURATION</div>
+              <div className="font-mono text-green" style={{ fontSize: '15px', fontWeight: 800 }}>
                 {formatDuration(squad.canonicalRoute.duration)}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.5px' }}>CREW</div>
-              <div className="font-mono" style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>
-                {memberCount}
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 800, letterSpacing: '0.5px' }}>RIDERS</div>
+              <div className="font-mono" style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF' }}>
+                {memberCount} active
               </div>
             </div>
           </div>
@@ -309,9 +339,16 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
         <div style={{ marginBottom: '24px', textAlign: 'left' }}>
           <label
             htmlFor="join-member-name"
-            style={{ fontSize: '13px', fontWeight: 700, color: nameError ? 'var(--accent-red)' : 'var(--text-primary)', display: 'block', marginBottom: '8px' }}
+            style={{
+              fontSize: '11px',
+              fontWeight: 800,
+              color: nameError ? 'var(--status-alert)' : 'var(--text-muted)',
+              display: 'block',
+              marginBottom: '6px',
+              letterSpacing: '0.4px'
+            }}
           >
-            Your Callsign / Name *
+            YOUR CALLSIGN / DISPLAY NAME *
           </label>
           <input
             id="join-member-name"
@@ -321,94 +358,83 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
               setMemberName(e.target.value);
               if (nameError) setNameError(null);
             }}
-            placeholder="Enter your name (e.g. Vishnu, Priya)"
+            placeholder="e.g. Apex Pilot, Road Runner"
             className="input-base"
             style={{
               width: '100%',
-              fontSize: '15px',
-              borderColor: nameError ? 'var(--accent-red)' : undefined
+              fontSize: '14px',
+              borderColor: nameError ? 'var(--status-alert)' : undefined
             }}
             autoFocus
             autoComplete="nickname"
           />
           {nameError ? (
-            <p style={{ fontSize: '12px', color: 'var(--accent-red)', marginTop: '6px', fontWeight: 600 }}>
+            <p style={{ fontSize: '12px', color: 'var(--status-alert)', marginTop: '6px', fontWeight: 600 }}>
               {nameError}
             </p>
           ) : (
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
-              Your callsign will be visible to the convoy lead and all squad members.
+              Your callsign will be visible to the convoy lead and riders on the shared radar.
             </p>
           )}
         </div>
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button type="button" onClick={onCancel} className="btn-secondary" style={{ flex: 1, padding: '14px' }}>
+          <button type="button" onClick={onCancel} className="btn-secondary" style={{ flex: 1, padding: '13px' }}>
             Cancel
           </button>
           <button
             type="button"
             onClick={handleJoinClick}
             className="btn-primary"
-            style={{ flex: 2, padding: '14px', fontSize: '15px' }}
+            style={{ flex: 2, padding: '13px', fontSize: '14px' }}
           >
-            <Navigation size={18} />
-            <span>Join Squad</span>
+            <Navigation size={16} />
+            <span>Join Convoy</span>
           </button>
         </div>
       </div>
 
       {/* Permission Explanation Modal */}
       {showPermissionDialog && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(8, 13, 22, 0.82)',
-            backdropFilter: 'blur(10px)',
-            zIndex: 'var(--z-modal)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px'
-          }}
-        >
+        <div className="modal-overlay">
           <div
-            className="surface-card animate-fade-in"
+            className="cockpit-card animate-modal-in"
             style={{
               maxWidth: '440px',
               width: '100%',
-              padding: '28px',
+              padding: '30px 24px',
               textAlign: 'center',
-              boxShadow: 'var(--shadow-xl)'
+              backgroundColor: 'var(--bg-elevated)',
+              boxShadow: 'var(--shadow-elevated)'
             }}
             role="dialog"
             aria-modal="true"
           >
             <div
               style={{
-                width: '56px',
-                height: '56px',
+                width: '54px',
+                height: '54px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(0, 217, 232, 0.12)',
+                backgroundColor: 'rgba(0, 102, 255, 0.12)',
+                border: '1px solid rgba(0, 102, 255, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 16px',
-                border: '1px solid rgba(0, 217, 232, 0.25)'
+                margin: '0 auto 16px'
               }}
             >
-              <ShieldCheck size={28} color="var(--accent-cyan)" />
+              <ShieldCheck size={26} color="var(--accent-cyan)" />
             </div>
 
-            <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            <h3 style={{ fontSize: '19px', fontWeight: 800, color: '#FFFFFF', marginBottom: '8px' }}>
               Live GPS Sync Permission
             </h3>
-            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '24px' }}>
-              SquadMaps uses your device location to provide turn-by-turn guidance and render your live position alongside fellow convoy members.
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '24px' }}>
+              SquadMaps uses your GPS location to provide synchronized turn-by-turn routing and calculate inter-member distances in real time.
               <br /><br />
-              <strong style={{ color: 'var(--text-primary)' }}>Your location is never shared until you join.</strong> You can pause GPS broadcasting at any time during the trip.
+              <strong style={{ color: 'var(--text-primary)' }}>Your location is only active within this squad session.</strong> You can pause GPS sharing anytime during the drive.
             </p>
 
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -425,9 +451,9 @@ export const JoinSquadPage: React.FC<JoinSquadPageProps> = ({
                 onClick={handleConfirmJoinWithLocation}
                 disabled={isJoining}
                 className="btn-primary"
-                style={{ flex: 2, padding: '12px', fontSize: '15px' }}
+                style={{ flex: 2, padding: '12px', fontSize: '14px' }}
               >
-                {isJoining ? 'Joining...' : 'Allow & Join Squad'}
+                {isJoining ? 'Connecting...' : 'Allow GPS & Enter'}
               </button>
             </div>
           </div>

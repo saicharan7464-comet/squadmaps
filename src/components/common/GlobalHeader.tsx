@@ -5,12 +5,9 @@ import {
   Compass,
   Home,
   Navigation,
-  Users,
   MessageSquare,
-  User as UserIcon,
-  Zap,
-  Shield,
-  Radio
+  Radio,
+  Sparkles
 } from 'lucide-react';
 
 interface GlobalHeaderProps {
@@ -32,14 +29,14 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
   return (
     <header
       style={{
-        height: '60px',
-        padding: '0 20px',
+        height: '64px',
+        padding: '0 24px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         backgroundColor: 'var(--bg-glass)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
         borderBottom: '1px solid var(--border-subtle)',
         position: 'relative',
         zIndex: 50,
@@ -52,7 +49,7 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '12px',
           cursor: 'pointer',
           userSelect: 'none'
         }}
@@ -60,41 +57,59 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
       >
         <div
           style={{
-            width: '36px',
-            height: '36px',
+            width: '38px',
+            height: '38px',
             borderRadius: '10px',
-            background: 'linear-gradient(135deg, var(--accent-cyan), var(--accent-green))',
+            background: 'linear-gradient(135deg, #0066FF 0%, #00D2FF 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 14px rgba(0, 217, 232, 0.3)',
+            boxShadow: '0 0 16px rgba(0, 102, 255, 0.35)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
             flexShrink: 0
           }}
         >
-          <Compass size={20} color="#080D16" />
+          <Compass size={20} color="#FFFFFF" strokeWidth={2.4} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span
-            style={{
-              fontSize: '18px',
-              fontWeight: 800,
-              letterSpacing: '-0.4px',
-              color: 'var(--text-primary)',
-              lineHeight: 1.1
-            }}
-          >
-            Squad<span style={{ color: 'var(--accent-cyan)' }}>Maps</span>
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span
+              style={{
+                fontSize: '18px',
+                fontWeight: 800,
+                letterSpacing: '-0.3px',
+                color: 'var(--text-primary)',
+                lineHeight: 1.1
+              }}
+            >
+              Squad<span style={{ color: 'var(--accent-cyan)' }}>Maps</span>
+            </span>
+            <span
+              style={{
+                fontSize: '9px',
+                fontWeight: 800,
+                color: 'var(--accent-cyan)',
+                backgroundColor: 'var(--accent-cyan-dim)',
+                padding: '1px 5px',
+                borderRadius: '4px',
+                border: '1px solid rgba(0, 210, 255, 0.25)',
+                letterSpacing: '0.4px'
+              }}
+            >
+              v1.0
+            </span>
+          </div>
           <span
             style={{
               fontSize: '10px',
-              fontWeight: 700,
+              fontWeight: 600,
               color: 'var(--text-muted)',
               letterSpacing: '0.6px',
-              textTransform: 'uppercase'
+              textTransform: 'uppercase',
+              marginTop: '2px'
             }}
           >
-            Group Navigation
+            Real-Time Convoy Navigation
           </span>
         </div>
       </div>
@@ -104,105 +119,131 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px'
+          gap: '6px',
+          background: 'rgba(10, 15, 29, 0.75)',
+          padding: '4px',
+          borderRadius: 'var(--radius-full)',
+          border: '1px solid var(--border-subtle)'
         }}
         className="hide-mobile"
       >
         <button
           type="button"
           onClick={() => onNavigate('home')}
-          className={currentView === 'home' ? 'btn-primary' : 'btn-ghost'}
           style={{
-            padding: '7px 14px',
+            padding: '7px 16px',
             fontSize: '13px',
-            borderRadius: 'var(--radius-full)'
+            fontWeight: currentView === 'home' ? 700 : 500,
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: currentView === 'home' ? 'rgba(0, 102, 255, 0.2)' : 'transparent',
+            border: currentView === 'home' ? '1px solid rgba(0, 102, 255, 0.45)' : '1px solid transparent',
+            color: currentView === 'home' ? '#FFFFFF' : 'var(--text-secondary)',
+            boxShadow: currentView === 'home' ? '0 2px 8px rgba(0, 102, 255, 0.15)' : 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.15s ease'
           }}
         >
-          <Home size={15} />
-          <span>Dashboard</span>
+          <Home size={15} color={currentView === 'home' ? 'var(--accent-cyan)' : 'currentColor'} />
+          <span>Home</span>
         </button>
 
         <button
           type="button"
           onClick={() => onNavigate('map')}
-          className={currentView === 'map' ? 'btn-primary' : 'btn-ghost'}
           style={{
-            padding: '7px 14px',
+            padding: '7px 16px',
             fontSize: '13px',
-            borderRadius: 'var(--radius-full)'
+            fontWeight: currentView === 'map' ? 700 : 500,
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: currentView === 'map' ? 'rgba(0, 102, 255, 0.2)' : 'transparent',
+            border: currentView === 'map' ? '1px solid rgba(0, 102, 255, 0.45)' : '1px solid transparent',
+            color: currentView === 'map' ? '#FFFFFF' : 'var(--text-secondary)',
+            boxShadow: currentView === 'map' ? '0 2px 8px rgba(0, 102, 255, 0.15)' : 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.15s ease'
           }}
         >
-          <Navigation size={15} />
-          <span>Explore Map</span>
+          <Navigation size={15} color={currentView === 'map' ? 'var(--accent-cyan)' : 'currentColor'} />
+          <span>Live Map</span>
         </button>
 
         {squad && (
           <button
             type="button"
             onClick={() => onNavigate('map')}
-            className="btn-ghost"
             style={{
-              padding: '7px 14px',
-              fontSize: '13px',
+              padding: '6px 14px',
+              fontSize: '12px',
+              fontWeight: 700,
               borderRadius: 'var(--radius-full)',
               color: 'var(--accent-cyan)',
               backgroundColor: 'var(--accent-cyan-dim)',
-              border: '1px solid rgba(0, 217, 232, 0.25)'
+              border: '1px solid rgba(0, 210, 255, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.15s ease'
             }}
           >
-            <Radio size={14} className="animate-pulse" />
-            <span>Active: {squad.name || squad.destination}</span>
+            <Radio size={14} className="animate-pulse" color="var(--accent-cyan)" />
+            <span>Squad: {squad.name || squad.destination}</span>
             <span
               style={{
                 fontSize: '11px',
                 padding: '1px 6px',
                 borderRadius: '999px',
-                backgroundColor: 'rgba(0, 217, 232, 0.2)'
+                backgroundColor: 'rgba(0, 210, 255, 0.2)',
+                color: '#FFFFFF'
               }}
             >
-              {members.length}
+              {members.length} {members.length === 1 ? 'rider' : 'riders'}
             </span>
           </button>
         )}
       </nav>
 
-      {/* Right Controls: Chat trigger (if squad active) + User Profile Pill */}
+      {/* Right Controls: Chat trigger + User Profile Chip */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         {squad && onOpenChat && (
           <button
             type="button"
             onClick={onOpenChat}
             className="btn-icon"
-            style={{ width: '38px', height: '38px', position: 'relative' }}
-            title="Squad Chat"
-            aria-label="Squad Chat"
+            style={{ width: '40px', height: '40px', position: 'relative' }}
+            title="Squad Radio & Chat"
+            aria-label="Squad Radio & Chat"
           >
             <MessageSquare size={17} color="var(--accent-cyan)" />
             {messages.length > 0 && (
               <span
                 style={{
                   position: 'absolute',
-                  top: '5px',
-                  right: '5px',
+                  top: '6px',
+                  right: '6px',
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  backgroundColor: 'var(--accent-green)'
+                  backgroundColor: 'var(--status-live)',
+                  boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)'
                 }}
               />
             )}
           </button>
         )}
 
-        {/* User Account Pill */}
+        {/* User Account Chip */}
         <button
           type="button"
           onClick={onOpenAccount}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '4px 10px 4px 5px',
+            gap: '9px',
+            padding: '4px 12px 4px 6px',
             borderRadius: 'var(--radius-full)',
             backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border-medium)',
@@ -210,9 +251,10 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
             fontSize: '13px',
             fontWeight: 700,
             cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxShadow: 'var(--shadow-sm)'
           }}
-          title="Account & Callsign settings"
+          title="Account profile and settings"
           aria-label="Account profile"
         >
           <div
@@ -220,7 +262,7 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
               width: '28px',
               height: '28px',
               borderRadius: '50%',
-              backgroundColor: user?.color || 'var(--accent-cyan)',
+              backgroundColor: user?.color || 'var(--accent-primary)',
               padding: '1px',
               overflow: 'hidden',
               display: 'flex',
@@ -232,7 +274,7 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
             <img
               src={user?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.id || 'pilot'}`}
               alt=""
-              style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#101827' }}
+              style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#0A0F1D' }}
             />
           </div>
           <span
@@ -249,11 +291,12 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
             <span
               style={{
                 fontSize: '10px',
-                color: 'var(--accent-amber)',
-                backgroundColor: 'var(--accent-amber-dim)',
-                padding: '2px 5px',
+                color: 'var(--status-warning)',
+                backgroundColor: 'var(--status-warning-dim)',
+                padding: '2px 6px',
                 borderRadius: '4px',
-                fontWeight: 700
+                fontWeight: 800,
+                letterSpacing: '0.4px'
               }}
             >
               GUEST
@@ -262,14 +305,15 @@ export const GlobalHeader: React.FC<GlobalHeaderProps> = ({
             <span
               style={{
                 fontSize: '10px',
-                color: 'var(--accent-green)',
-                backgroundColor: 'var(--accent-green-dim)',
-                padding: '2px 5px',
+                color: 'var(--status-live)',
+                backgroundColor: 'var(--status-live-dim)',
+                padding: '2px 6px',
                 borderRadius: '4px',
-                fontWeight: 700
+                fontWeight: 800,
+                letterSpacing: '0.4px'
               }}
             >
-              USER
+              PILOT
             </span>
           )}
         </button>

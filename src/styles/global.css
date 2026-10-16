@@ -11,7 +11,7 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background-color: var(--bg-primary);
+  background-color: var(--bg-canvas);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 15px;
@@ -36,14 +36,14 @@ html, body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-medium);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background: var(--border-strong);
 }
 
 /* Typography utilities */
@@ -51,23 +51,43 @@ html, body {
   font-family: var(--font-mono);
 }
 
+.text-blue {
+  color: var(--accent-primary);
+}
+
 .text-cyan {
   color: var(--accent-cyan);
 }
 
 .text-green {
-  color: var(--accent-green);
+  color: var(--status-live);
 }
 
 .text-amber {
-  color: var(--accent-amber);
+  color: var(--status-warning);
 }
 
 .text-red {
-  color: var(--accent-red);
+  color: var(--status-alert);
 }
 
-/* Surface & Card Helpers */
+.text-purple {
+  color: var(--status-arrived);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+/* Automotive Surface & Card Helpers */
 .surface-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -82,6 +102,19 @@ html, body {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cockpit-card {
+  background: linear-gradient(180deg, #152038 0%, #10192D 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cockpit-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-lg);
 }
 
 .glass-panel {
@@ -114,7 +147,7 @@ button, input, select, textarea, a {
 }
 
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
-  outline: 2px solid var(--accent-cyan);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
@@ -137,8 +170,29 @@ button:disabled {
   pointer-events: none;
 }
 
-/* Primary Accent Button */
+/* Primary Electric Blue Button */
 .btn-primary {
+  background: linear-gradient(135deg, #0066FF 0%, #0052CC 100%);
+  color: #FFFFFF;
+  font-weight: 700;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1A75FF 0%, #0066FF 100%);
+  box-shadow: var(--shadow-glow-blue);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* High-Contrast Cyan Action Button */
+.btn-cyan {
   background: var(--accent-cyan);
   color: var(--text-inverse);
   font-weight: 700;
@@ -148,29 +202,30 @@ button:disabled {
   border: 1px solid transparent;
 }
 
-.btn-primary:hover {
+.btn-cyan:hover {
   background: var(--accent-cyan-hover);
   box-shadow: var(--shadow-glow-cyan);
   transform: translateY(-1px);
 }
 
-.btn-primary:active {
+.btn-cyan:active {
   transform: translateY(0);
 }
 
 /* Success / Emerald Button */
 .btn-success {
-  background: var(--accent-green);
-  color: var(--text-inverse);
+  background: var(--status-live);
+  color: #FFFFFF;
   font-weight: 700;
   padding: 10px 18px;
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
-  border: 1px solid transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .btn-success:hover {
-  background: var(--accent-green-hover);
+  background: var(--status-live-hover);
+  box-shadow: var(--shadow-glow-green);
   transform: translateY(-1px);
 }
 
@@ -178,7 +233,7 @@ button:disabled {
   transform: translateY(0);
 }
 
-/* Secondary Slate Button */
+/* Secondary Charcoal Navy Button */
 .btn-secondary {
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -190,8 +245,9 @@ button:disabled {
 
 .btn-secondary:hover {
   background: var(--bg-elevated);
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.24);
   color: #FFFFFF;
+  transform: translateY(-1px);
 }
 
 .btn-secondary:active {
@@ -209,8 +265,24 @@ button:disabled {
 }
 
 .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
+}
+
+/* Destructive / Alert Button */
+.btn-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: #F87171;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.22);
+  color: #FFFFFF;
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 /* Icon Button */
@@ -226,8 +298,8 @@ button:disabled {
 
 .btn-icon:hover {
   background: var(--bg-elevated);
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
 }
 
 .btn-icon:active {
@@ -238,7 +310,7 @@ button:disabled {
 .input-base {
   width: 100%;
   padding: 11px 14px;
-  background-color: var(--bg-surface);
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
@@ -254,9 +326,9 @@ button:disabled {
 }
 
 .input-base:focus {
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 3px rgba(0, 217, 232, 0.15);
-  background-color: var(--bg-elevated);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.20);
+  background-color: var(--bg-surface);
 }
 
 /* Status Badges */
@@ -271,34 +343,60 @@ button:disabled {
   letter-spacing: 0.3px;
 }
 
+.badge-blue {
+  background: var(--accent-primary-dim);
+  color: #38BDF8;
+  border: 1px solid rgba(0, 102, 255, 0.35);
+}
+
 .badge-cyan {
   background: var(--accent-cyan-dim);
   color: var(--accent-cyan);
-  border: 1px solid rgba(0, 217, 232, 0.25);
+  border: 1px solid rgba(0, 210, 255, 0.30);
 }
 
 .badge-green {
-  background: var(--accent-green-dim);
-  color: var(--accent-green);
-  border: 1px solid rgba(0, 214, 160, 0.25);
+  background: var(--status-live-dim);
+  color: var(--status-live);
+  border: 1px solid rgba(16, 185, 129, 0.30);
 }
 
 .badge-amber {
-  background: var(--accent-amber-dim);
-  color: var(--accent-amber);
-  border: 1px solid rgba(245, 158, 11, 0.25);
+  background: var(--status-warning-dim);
+  color: var(--status-warning);
+  border: 1px solid rgba(245, 158, 11, 0.30);
 }
 
 .badge-red {
-  background: var(--accent-red-dim);
-  color: var(--accent-red);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: var(--status-alert-dim);
+  color: var(--status-alert);
+  border: 1px solid rgba(239, 68, 68, 0.30);
+}
+
+.badge-purple {
+  background: var(--status-arrived-dim);
+  color: var(--status-arrived);
+  border: 1px solid rgba(139, 92, 246, 0.30);
 }
 
 .badge-slate {
-  background: rgba(100, 116, 139, 0.15);
+  background: var(--status-offline-dim);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
+}
+
+/* Modal Backdrops & Overlays */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 17, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
 }
 
 /* Map specific styling */
@@ -315,14 +413,14 @@ button:disabled {
 
 /* Leaflet dark theme override */
 .leaflet-container {
-  background-color: #080D16 !important;
+  background-color: #060913 !important;
   font-family: var(--font-sans) !important;
 }
 
-/* Leaflet Dark Mode Tiles */
+/* Leaflet Dark Mode Tiles - Tuned for deep midnight navy with crisp contrast */
 .dark-tile-layer .leaflet-tile,
 .dark-tile-layer img {
-  filter: brightness(0.62) invert(1) contrast(3) hue-rotate(200deg) saturate(0.25) brightness(0.72);
+  filter: brightness(0.68) invert(1) contrast(2.4) hue-rotate(205deg) saturate(0.35) brightness(0.78);
 }
 
 .leaflet-control-zoom {
@@ -342,7 +440,20 @@ button:disabled {
   color: var(--accent-cyan) !important;
 }
 
-/* Responsive Navigation Utilities */
+.leaflet-popup-content-wrapper {
+  background: var(--bg-glass-elevated) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-medium) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-lg) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-glass-elevated) !important;
+}
+
+/* Responsive Navigation & Scrolling Utilities */
 @media (min-width: 769px) {
   .mobile-bottom-nav {
     display: none !important;
@@ -355,5 +466,16 @@ button:disabled {
 @media (max-width: 768px) {
   .hide-mobile {
     display: none !important;
+  }
+
+  /* Safe-area bottom clearance to ensure content never hides behind fixed bottom nav */
+  .page-scroll-container {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 16px)) !important;
+  }
+
+  /* Prevent horizontal overflow on small mobile viewports */
+  .mobile-no-overflow {
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 }

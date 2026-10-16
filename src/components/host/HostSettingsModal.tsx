@@ -62,11 +62,8 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
 
   return (
     <div
+      className="modal-overlay"
       style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(8, 13, 22, 0.82)',
-        backdropFilter: 'blur(10px)',
         zIndex: 'var(--z-modal)',
         display: 'flex',
         alignItems: 'center',
@@ -76,14 +73,15 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="surface-card animate-fade-in"
+        className="cockpit-card animate-modal-in"
         style={{
           width: '100%',
           maxWidth: '520px',
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '24px',
-          boxShadow: 'var(--shadow-xl)'
+          boxShadow: 'var(--shadow-xl)',
+          position: 'relative'
         }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -94,10 +92,11 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
+                width: '38px',
+                height: '38px',
                 borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'rgba(0, 217, 232, 0.12)',
+                backgroundColor: 'rgba(0, 102, 255, 0.12)',
+                border: '1px solid rgba(0, 102, 255, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -106,10 +105,10 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
               <Settings size={20} color="var(--accent-cyan)" />
             </div>
             <div>
-              <h3 id="host-controls-title" style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              <h3 id="host-controls-title" style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
                 Squad Host Controls
               </h3>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                 Manage convoy settings and members
               </span>
             </div>
@@ -129,7 +128,7 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
         <form onSubmit={handleRename} style={{ marginBottom: '20px' }}>
           <label
             htmlFor="host-squad-name"
-            style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}
+            style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}
           >
             Squad Name
           </label>
@@ -158,33 +157,34 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
 
         {/* QR Code & Shareable Invitation */}
         <div
-          className="elevated-card"
+          className="cockpit-card"
           style={{
-            padding: '18px',
+            padding: '20px',
             marginBottom: '20px',
             textAlign: 'center',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            border: '1px solid var(--border-subtle)'
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid var(--border-medium)'
           }}
         >
-          <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Scan QR Code to Join Convoy
           </div>
-          <div style={{ background: '#FFFFFF', padding: '12px', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
+          <div style={{ background: '#FFFFFF', padding: '12px', borderRadius: 'var(--radius-md)', display: 'inline-block', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
             <QRCodeSVG value={inviteUrl} size={150} level="M" />
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 700, marginTop: '10px', wordBreak: 'break-all' }}>
+          <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 700, marginTop: '12px', wordBreak: 'break-all', fontFamily: 'monospace' }}>
             {inviteUrl}
           </div>
           <button
             type="button"
             onClick={handleCopyLink}
             className="btn-secondary"
-            style={{ marginTop: '12px', fontSize: '12px', padding: '8px 16px' }}
+            style={{ marginTop: '14px', fontSize: '13px', padding: '8px 16px' }}
           >
-            {copied ? <Check size={14} color="var(--accent-green)" /> : <Copy size={14} />}
+            {copied ? <Check size={14} color="var(--status-live)" /> : <Copy size={14} />}
             <span>{copied ? 'Copied' : 'Copy Invitation Link'}</span>
           </button>
         </div>
@@ -192,7 +192,7 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
         {/* Manage Members */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Convoy Members ({members.length})
             </span>
             <span className="badge badge-cyan" style={{ fontSize: '10px' }}>
@@ -203,12 +203,13 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
             {members.map((m) => (
               <div
                 key={m.userId}
-                className="elevated-card"
+                className="cockpit-card"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '10px 14px'
+                  padding: '10px 14px',
+                  backgroundColor: 'var(--bg-surface)'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -236,7 +237,7 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
                     title="Remove member from squad"
                     className="btn-ghost"
                     style={{
-                      color: 'var(--accent-red)',
+                      color: 'var(--status-alert)',
                       padding: '6px 10px',
                       fontSize: '12px',
                       fontWeight: 600
@@ -262,8 +263,9 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
                 width: '100%',
                 backgroundColor: 'rgba(239, 68, 68, 0.08)',
                 borderColor: 'rgba(239, 68, 68, 0.3)',
-                color: 'var(--accent-red)',
-                padding: '12px'
+                color: 'var(--status-alert)',
+                padding: '12px',
+                fontWeight: 700
               }}
             >
               <AlertOctagon size={18} />
@@ -271,7 +273,7 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
             </button>
           ) : (
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '13px', color: 'var(--accent-red)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--status-alert)', marginBottom: '14px', fontWeight: 600 }}>
                 Are you sure you want to end this squad? All members will be disconnected.
               </p>
               <div style={{ display: 'flex', gap: '10px' }}>
@@ -280,7 +282,13 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
                   onClick={handleEndSquad}
                   disabled={isEnding}
                   className="btn-primary"
-                  style={{ flex: 1, backgroundColor: 'var(--accent-red)', color: '#FFFFFF' }}
+                  style={{
+                    flex: 1,
+                    background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontWeight: 700
+                  }}
                 >
                   {isEnding ? 'Ending Squad...' : 'Yes, End Squad'}
                 </button>
@@ -289,7 +297,7 @@ export const HostSettingsModal: React.FC<HostSettingsModalProps> = ({
                   onClick={() => setConfirmEnd(false)}
                   disabled={isEnding}
                   className="btn-secondary"
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, fontWeight: 700 }}
                 >
                   Cancel
                 </button>

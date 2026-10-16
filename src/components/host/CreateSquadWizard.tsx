@@ -217,36 +217,28 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
 
   const handleWhatsApp = () => {
     const text = encodeURIComponent(
-      `🚗 Join our Squad on SquadNav for our trip to ${selectedPlace?.name}!\n\nTap to join & track our convoy: ${inviteUrl}`
+      `🚗 Join our Squad on SquadMaps for our trip to ${selectedPlace?.name}!\n\nTap to join & track our convoy: ${inviteUrl}`
     );
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(8, 13, 22, 0.82)',
-        backdropFilter: 'blur(10px)',
-        zIndex: 'var(--z-modal)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px'
-      }}
+      className="modal-overlay"
       onClick={onClose}
     >
       <div
-        className="surface-card animate-fade-in"
+        className="cockpit-card animate-modal-in"
         style={{
           width: '100%',
-          maxWidth: '540px',
+          maxWidth: '560px',
           maxHeight: '90vh',
           overflowY: 'auto',
-          padding: '28px',
-          boxShadow: 'var(--shadow-xl)',
-          position: 'relative'
+          padding: '30px 26px',
+          boxShadow: 'var(--shadow-elevated)',
+          position: 'relative',
+          backgroundColor: 'var(--bg-elevated)',
+          border: '1px solid var(--border-medium)'
         }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -254,28 +246,28 @@ export const CreateSquadWizard: React.FC<CreateSquadWizardProps> = ({
         aria-labelledby="wizard-title"
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '22px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className="badge badge-cyan" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span className="badge badge-blue" style={{ fontSize: '10px', letterSpacing: '0.6px' }}>
                 STEP {step} OF 5
               </span>
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '5px' }}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <div
                     key={s}
                     style={{
-                      width: '18px',
+                      width: '20px',
                       height: '3px',
                       borderRadius: '2px',
-                      backgroundColor: s <= step ? 'var(--accent-cyan)' : 'var(--border-subtle)',
-                      transition: 'background-color 0.2s'
+                      backgroundColor: s <= step ? 'var(--accent-primary)' : 'var(--border-subtle)',
+                      transition: 'background-color 0.25s'
                     }}
                   />
                 ))}
               </div>
             </div>
-            <h2 id="wizard-title" style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.3px' }}>
+            <h2 id="wizard-title" style={{ fontSize: '22px', fontWeight: 800, color: '#FFFFFF', margin: 0, letterSpacing: '-0.3px' }}>
               {step === 1 && 'Create Convoy Squad'}
               {step === 2 && 'Select Vehicle Mode'}
               {step === 3 && 'Calculating Best Routes...'}

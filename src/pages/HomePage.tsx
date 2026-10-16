@@ -3,15 +3,11 @@ import {
   Navigation,
   Users,
   MapPin,
-  Zap,
   Bell,
-  BarChart3,
-  Compass,
   ArrowRight,
   Shield,
   Radio,
   ChevronRight,
-  Camera,
   QrCode,
   Clipboard,
   Link2,
@@ -20,7 +16,9 @@ import {
   X,
   Share2,
   Sparkles,
-  Car
+  Compass,
+  Zap,
+  Gauge
 } from 'lucide-react';
 import { useAuth } from '../features/auth/AuthContext';
 import { useSquad } from '../features/squad/SquadContext';
@@ -38,27 +36,31 @@ interface HomePageProps {
 const BENEFIT_CARDS = [
   {
     icon: Navigation,
-    title: 'Precision Group Routing',
-    desc: 'Turn-by-turn navigation with speed monitoring, voice guidance, and vehicle-specific paths for cars, bikes, and transit.',
+    title: 'Shared Canonical Route',
+    desc: 'The entire convoy follows the exact same designated route chosen by the host to eliminate separation and navigation drift.',
+    stat: '100% Path Sync',
     accent: 'var(--accent-cyan)'
   },
   {
     icon: Users,
-    title: 'Live Convoy Radar',
-    desc: 'Watch every squad member on the same shared path with real-time location sync, relative distance, and heading.',
-    accent: 'var(--accent-green)'
-  },
-  {
-    icon: MapPin,
-    title: 'One-Tap Regroup Points',
-    desc: 'Propose "Let\'s Meet Here" stops anytime. Members cast quick votes on suggested pit stops and rest areas.',
-    accent: 'var(--accent-amber)'
+    title: 'Inter-Member Proximity Radar',
+    desc: 'Real-time relative telemetry showing precisely how far ahead or behind each rider is (e.g. "Rahul is +1.8 km ahead").',
+    stat: 'Sub-Second Sync',
+    accent: 'var(--status-live)'
   },
   {
     icon: Bell,
-    title: 'Smart Separation Alerts',
-    desc: 'Automatic alerts notify the group when a vehicle gets stuck in traffic or falls behind the designated threshold.',
-    accent: 'var(--accent-red)'
+    title: 'Separation & Lag Alerts',
+    desc: 'Intelligent, non-spamming alarms trigger when a vehicle gets held at a traffic signal or drifts past the distance threshold.',
+    stat: 'Auto Warning',
+    accent: 'var(--status-warning)'
+  },
+  {
+    icon: MapPin,
+    title: '"Let\'s Meet Here" Regroup',
+    desc: 'Propose meeting points and road-trip pit stops with instantaneous 1-tap squad voting before re-routing together.',
+    stat: 'Live Voting',
+    accent: 'var(--accent-primary)'
   }
 ];
 
@@ -150,82 +152,88 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   return (
     <div
+      className="page-scroll-container mobile-no-overflow"
       style={{
         width: '100%',
         height: '100%',
         overflowY: 'auto',
-        backgroundColor: 'var(--bg-primary)',
+        backgroundColor: 'var(--bg-canvas)',
         color: 'var(--text-primary)',
         display: 'flex',
         flexDirection: 'column'
       }}
     >
-      <div style={{ padding: '24px 20px 80px', maxWidth: '1080px', margin: '0 auto', width: '100%' }}>
-        {/* ACTIVE CONVOY ALERT / RESUME BANNER (if squad active) */}
+      <div style={{ padding: '16px 16px 80px', maxWidth: '1080px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+        
+        {/* ACTIVE CONVOY RESUME BANNER (if squad active) */}
         {squad && (
           <div
-            className="elevated-card animate-slide-down"
+            className="cockpit-card animate-slide-down"
             style={{
-              padding: '16px 20px',
-              marginBottom: '28px',
+              padding: '14px 20px',
+              marginBottom: '20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
               gap: '14px',
-              border: '1px solid rgba(0, 217, 232, 0.35)',
-              background: 'linear-gradient(135deg, rgba(21, 31, 48, 0.95), rgba(16, 24, 39, 0.95))',
-              boxShadow: 'var(--shadow-md), 0 0 20px rgba(0, 217, 232, 0.1)'
+              border: '1px solid rgba(0, 102, 255, 0.4)',
+              background: 'linear-gradient(135deg, rgba(16, 26, 46, 0.95), rgba(10, 15, 29, 0.95))',
+              boxShadow: 'var(--shadow-md), 0 0 20px rgba(0, 102, 255, 0.12)'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div
                 style={{
-                  width: '42px',
-                  height: '42px',
+                  width: '40px',
+                  height: '40px',
                   borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'var(--accent-cyan-dim)',
+                  backgroundColor: 'var(--status-live-dim)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--accent-cyan)'
+                  color: 'var(--status-live)',
+                  flexShrink: 0
                 }}
               >
-                <Radio size={22} className="animate-pulse" />
+                <Radio size={20} className="animate-pulse" />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span className="badge badge-cyan">ACTIVE SQUAD</span>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Code: {squad.squadId}</span>
+                  <span className="badge badge-green">LIVE CONVOY ACTIVE</span>
+                  <span className="font-mono" style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 700 }}>
+                    ID: {squad.squadId}
+                  </span>
                 </div>
-                <h3 style={{ margin: '4px 0 0', fontSize: '17px', fontWeight: 800 }}>
+                <h3 style={{ margin: '3px 0 1px', fontSize: '17px', fontWeight: 800, color: '#FFFFFF' }}>
                   {squad.name || `Trip to ${squad.destination}`}
                 </h3>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  {members.length} {members.length === 1 ? 'member' : 'members'} traveling to {squad.destination}
+                <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                  Traveling to <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{squad.destination}</span> with {members.length} {members.length === 1 ? 'rider' : 'riders'}
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button
                 type="button"
-                className="btn-ghost"
+                className="btn-secondary"
                 onClick={handleCopyActiveInvite}
-                style={{ fontSize: '13px', padding: '8px 12px' }}
+                style={{ fontSize: '12.5px', padding: '8px 12px' }}
                 title="Copy squad invite link"
               >
-                {copiedLink ? <Check size={16} color="var(--accent-green)" /> : <Share2 size={16} />}
-                <span>{copiedLink ? 'Link Copied' : 'Share'}</span>
+                {copiedLink ? <Check size={15} color="var(--status-live)" /> : <Share2 size={15} />}
+                <span>{copiedLink ? 'Link Copied' : 'Share Code'}</span>
               </button>
 
               <button
                 type="button"
                 className="btn-primary"
                 onClick={onOpenMap || onStartNavigating}
-                style={{ fontSize: '13px', padding: '9px 18px' }}
+                style={{ fontSize: '12.5px', padding: '8px 16px' }}
               >
-                <Navigation size={15} />
+                <Navigation size={14} />
                 <span>Resume Journey</span>
               </button>
             </div>
@@ -233,234 +241,289 @@ export const HomePage: React.FC<HomePageProps> = ({
         )}
 
         {/* HERO SECTION */}
-        <section style={{ textAlign: 'center', padding: '30px 10px 40px' }}>
+        <section style={{ textAlign: 'center', padding: '12px 6px 20px' }}>
+          {/* Eyebrow badge */}
           <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              padding: '6px 14px',
+              padding: '5px 14px',
               borderRadius: 'var(--radius-full)',
-              backgroundColor: 'var(--accent-cyan-dim)',
-              border: '1px solid rgba(0, 217, 232, 0.25)',
+              backgroundColor: 'rgba(0, 102, 255, 0.1)',
+              border: '1px solid rgba(0, 102, 255, 0.3)',
               color: 'var(--accent-cyan)',
-              fontSize: '12px',
-              fontWeight: 700,
-              marginBottom: '20px',
-              letterSpacing: '0.5px'
+              fontSize: '11px',
+              fontWeight: 800,
+              marginBottom: '16px',
+              letterSpacing: '0.6px'
             }}
           >
-            <Sparkles size={14} />
+            <span className="status-beacon-live" />
             <span>REAL-TIME COCKPIT GROUP NAVIGATION</span>
           </div>
 
           <h1
             style={{
-              fontSize: 'clamp(32px, 5.5vw, 54px)',
+              fontSize: 'clamp(32px, 5.5vw, 52px)',
               fontWeight: 800,
-              lineHeight: 1.15,
-              letterSpacing: '-1px',
-              margin: '0 auto 16px',
-              maxWidth: '800px',
-              color: 'var(--text-primary)'
+              lineHeight: 1.12,
+              letterSpacing: '-1.2px',
+              margin: '0 auto 12px',
+              maxWidth: '820px',
+              color: '#FFFFFF'
             }}
           >
-            Travel in Convoy. <br />
-            <span style={{ color: 'var(--accent-cyan)' }}>Never Lose Your Squad.</span>
+            Every Rider. <br />
+            <span style={{
+              background: 'linear-gradient(135deg, #00D2FF 0%, #0066FF 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              display: 'inline-block'
+            }}>
+              One Journey.
+            </span>
           </h1>
 
           <p
             style={{
-              fontSize: 'clamp(15px, 2vw, 18px)',
+              fontSize: 'clamp(14px, 1.8vw, 16px)',
               color: 'var(--text-secondary)',
-              maxWidth: '620px',
-              margin: '0 auto 32px',
+              maxWidth: '640px',
+              margin: '0 auto 24px',
               lineHeight: 1.55
             }}
           >
-            Coordinate group drives, motorcycle convoys, and weekend road trips on a shared live route with synchronized GPS tracking, smart distance alerts, and one-tap regroup stops.
+            Coordinate motorcycle tours, sports car rallies, and convoy road trips on a shared canonical path with real-time inter-rider proximity telemetry, automatic separation alerts, and one-tap regroup stops.
           </p>
 
-          {/* Quick Action Grid */}
+          {/* Primary Action Deck (Host vs Join) */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
               gap: '16px',
               maxWidth: '920px',
-              margin: '0 auto 40px'
+              margin: '0 auto 28px',
+              textAlign: 'left'
             }}
           >
-            {/* Card 1: Create Squad */}
+            {/* Action 1: Start a Squad */}
             <div
-              className="surface-card glass-card"
+              className="cockpit-card"
               style={{
-                padding: '24px 20px',
-                textAlign: 'left',
+                padding: '24px 22px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                cursor: 'pointer'
+                border: '1px solid rgba(0, 102, 255, 0.3)',
+                position: 'relative',
+                overflow: 'hidden'
               }}
-              onClick={onCreateSquad}
             >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '120px',
+                  height: '120px',
+                  background: 'radial-gradient(circle, rgba(0, 102, 255, 0.15) 0%, transparent 70%)',
+                  pointerEvents: 'none'
+                }}
+              />
               <div>
-                <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'var(--accent-cyan-dim)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--accent-cyan)',
-                    marginBottom: '16px'
-                  }}
-                >
-                  <Users size={22} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'linear-gradient(135deg, rgba(0, 102, 255, 0.2), rgba(0, 210, 255, 0.1))',
+                      border: '1px solid rgba(0, 102, 255, 0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--accent-cyan)'
+                    }}
+                  >
+                    <Users size={22} />
+                  </div>
+                  <span className="badge badge-blue">HOST CONVOY</span>
                 </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px' }}>
-                  Host a Squad
+                
+                <h3 style={{ fontSize: '19px', fontWeight: 800, margin: '0 0 6px', color: '#FFFFFF', letterSpacing: '-0.01em' }}>
+                  Start a Squad
                 </h3>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>
-                  Set a destination, generate optimal route choices, and invite your friends with a shareable 6-character code.
+                <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                  Designate a destination, preview vehicle-tailored routes, configure convoy separation limits, and generate an instant invite code.
                 </p>
               </div>
 
-              <div style={{ marginTop: '20px' }}>
+              <div style={{ marginTop: '22px' }}>
                 <button
                   type="button"
                   className="btn-primary"
-                  style={{ width: '100%', fontSize: '14px', padding: '11px' }}
+                  onClick={onCreateSquad}
+                  style={{
+                    width: '100%',
+                    fontSize: '14px',
+                    height: '46px',
+                    padding: '0 18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
                 >
-                  <span>Start a Squad Journey</span>
+                  <span>Launch New Squad</span>
                   <ArrowRight size={16} />
                 </button>
               </div>
             </div>
 
-            {/* Card 2: Join Squad */}
+            {/* Action 2: Join a Squad */}
             <div
-              className="surface-card glass-card"
+              className="cockpit-card"
               style={{
-                padding: '24px 20px',
-                textAlign: 'left',
+                padding: '24px 22px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                cursor: 'pointer'
+                border: '1px solid var(--border-medium)',
+                position: 'relative'
               }}
-              onClick={() => setShowJoinModal(true)}
             >
               <div>
-                <div
-                  style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'var(--accent-green-dim)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--accent-green)',
-                    marginBottom: '16px'
-                  }}
-                >
-                  <Link2 size={22} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(0, 210, 255, 0.12)',
+                      border: '1px solid rgba(0, 210, 255, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--accent-cyan)'
+                    }}
+                  >
+                    <Link2 size={22} />
+                  </div>
+                  <span className="badge badge-cyan">JOIN TRIP</span>
                 </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px' }}>
+
+                <h3 style={{ fontSize: '19px', fontWeight: 800, margin: '0 0 6px', color: '#FFFFFF', letterSpacing: '-0.01em' }}>
                   Join an Existing Squad
                 </h3>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>
-                  Got an invite link or QR code from your group leader? Enter code or scan with camera to join immediately.
+                <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                  Have an invite link or squad code from your road captain? Connect your GPS into the group channel with one tap.
                 </p>
               </div>
 
-              <div style={{ marginTop: '20px' }}>
+              <div style={{ marginTop: '22px', display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="btn-cyan"
+                  onClick={() => setShowJoinModal(true)}
+                  style={{
+                    flex: 1,
+                    fontSize: '14px',
+                    height: '46px',
+                    padding: '0 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>Enter Squad Code</span>
+                  <ChevronRight size={16} />
+                </button>
                 <button
                   type="button"
                   className="btn-secondary"
-                  style={{ width: '100%', fontSize: '14px', padding: '11px' }}
-                >
-                  <span>Enter Code or Scan QR</span>
-                  <QrCode size={16} />
-                </button>
-              </div>
-            </div>
-
-            {/* Card 3: Explore Map Solo */}
-            <div
-              className="surface-card glass-card"
-              style={{
-                padding: '24px 20px',
-                textAlign: 'left',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                cursor: 'pointer'
-              }}
-              onClick={onOpenMap || onStartNavigating}
-            >
-              <div>
-                <div
+                  onClick={() => setShowScanner(true)}
                   style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+                    height: '46px',
+                    width: '46px',
+                    padding: 0,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--text-primary)',
-                    marginBottom: '16px'
+                    flexShrink: 0
                   }}
+                  title="Scan Squad QR Code"
+                  aria-label="Scan Squad QR Code"
                 >
-                  <Navigation size={22} />
-                </div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px' }}>
-                  Explore Map
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>
-                  Search destinations, preview alternatives across vehicle modes, and test turn-by-turn routing solo.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  style={{
-                    width: '100%',
-                    fontSize: '14px',
-                    padding: '11px',
-                    border: '1px solid var(--border-medium)',
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)'
-                  }}
-                >
-                  <span>Open Interactive Map</span>
-                  <ChevronRight size={16} />
+                  <QrCode size={19} color="var(--accent-cyan)" />
                 </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Cockpit Telemetry Bar */}
+          <div
+            style={{
+              maxWidth: '860px',
+              margin: '0 auto 16px',
+              padding: '12px 18px',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+              border: '1px solid var(--border-subtle)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-around',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Gauge size={18} color="var(--accent-cyan)" />
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>SPEED & TELEMETRY</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Live GPS Telemetry</div>
+              </div>
+            </div>
+
+            <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-subtle)' }} className="hide-mobile" />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Compass size={18} color="var(--status-live)" />
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>CANONICAL PATH</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Shared Turn-by-Turn</div>
+              </div>
+            </div>
+
+            <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-subtle)' }} className="hide-mobile" />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Shield size={18} color="var(--status-warning)" />
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>SAFETY GUARD</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>Separation Alarms</div>
               </div>
             </div>
           </div>
         </section>
 
         {/* CORE CAPABILITIES SECTION */}
-        <section style={{ marginTop: '20px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <section style={{ marginTop: '16px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '22px' }}>
             <span
               style={{
-                fontSize: '12px',
-                fontWeight: 700,
+                fontSize: '11px',
+                fontWeight: 800,
                 color: 'var(--accent-cyan)',
                 textTransform: 'uppercase',
                 letterSpacing: '1px'
               }}
             >
-              DESIGNED FOR THE OPEN ROAD
+              BUILT FOR ROAD TRIPS & MOTORCYCLE CONVOYS
             </span>
-            <h2 style={{ fontSize: '26px', fontWeight: 800, margin: '8px 0 0' }}>
+            <h2 style={{ fontSize: '28px', fontWeight: 800, margin: '8px 0 0', color: '#FFFFFF' }}>
               Engineered for Convoy Coordination
             </h2>
           </div>
@@ -468,8 +531,8 @@ export const HomePage: React.FC<HomePageProps> = ({
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '16px'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '18px'
             }}
           >
             {BENEFIT_CARDS.map((card, idx) => {
@@ -479,32 +542,54 @@ export const HomePage: React.FC<HomePageProps> = ({
                   key={idx}
                   className="surface-card"
                   style={{
-                    padding: '20px',
+                    padding: '24px 20px',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-subtle)'
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  <div
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      borderRadius: '10px',
-                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: card.accent,
-                      marginBottom: '14px'
-                    }}
-                  >
-                    <Icon size={20} />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: 'var(--radius-sm)',
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          border: '1px solid var(--border-subtle)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: card.accent
+                        }}
+                      >
+                        <Icon size={20} />
+                      </div>
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: card.accent,
+                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                          padding: '3px 8px',
+                          borderRadius: '4px'
+                        }}
+                      >
+                        {card.stat}
+                      </span>
+                    </div>
+
+                    <h3 style={{ fontSize: '17px', fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)' }}>
+                      {card.title}
+                    </h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>
+                      {card.desc}
+                    </p>
                   </div>
-                  <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 8px', color: 'var(--text-primary)' }}>
-                    {card.title}
-                  </h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                    {card.desc}
-                  </p>
                 </div>
               );
             })}
@@ -515,30 +600,19 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* JOIN SQUAD MODAL */}
       {showJoinModal && (
         <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 999,
-            backgroundColor: 'rgba(8, 13, 22, 0.85)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '16px'
-          }}
+          className="modal-overlay"
           onClick={() => setShowJoinModal(false)}
         >
           <div
-            className="surface-card animate-scale-in"
+            className="cockpit-card animate-modal-in"
             style={{
               width: '100%',
-              maxWidth: '420px',
-              padding: '26px 22px',
+              maxWidth: '440px',
+              padding: '28px 24px',
               position: 'relative',
               backgroundColor: 'var(--bg-surface)',
               border: '1px solid var(--border-medium)',
-              boxShadow: 'var(--shadow-elevated)'
+              boxShadow: 'var(--shadow-xl)'
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -552,35 +626,39 @@ export const HomePage: React.FC<HomePageProps> = ({
               <X size={16} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
               <div
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  backgroundColor: 'var(--accent-green-dim)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--status-live-dim)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--accent-green)'
+                  color: 'var(--status-live)'
                 }}
               >
                 <Link2 size={20} />
               </div>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>Join a Squad</h2>
+              <div>
+                <h2 style={{ fontSize: '19px', fontWeight: 800, margin: 0, color: '#FFFFFF' }}>Join a Squad</h2>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Connect to an active travel convoy</span>
+              </div>
             </div>
 
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 18px', lineHeight: 1.4 }}>
-              Enter the 6-character Squad Code or paste an invite link shared by your trip leader.
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 20px', lineHeight: 1.45 }}>
+              Enter the 6-character Squad Code or paste the invite link shared by your road leader.
             </p>
 
-            <form onSubmit={handleJoinSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <form onSubmit={handleJoinSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label
                   htmlFor="join-callsign-input"
-                  style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '5px' }}
+                  style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', letterSpacing: '0.4px' }}
                 >
-                  YOUR CALLSIGN / NAME
+                  YOUR PILOT CALLSIGN
                 </label>
                 <div style={{ position: 'relative' }}>
                   <User
@@ -592,10 +670,10 @@ export const HomePage: React.FC<HomePageProps> = ({
                     id="join-callsign-input"
                     type="text"
                     className="input-base"
-                    style={{ paddingLeft: '36px' }}
+                    style={{ paddingLeft: '38px' }}
                     value={joinUserName}
                     onChange={(e) => setJoinUserName(e.target.value)}
-                    placeholder="Enter your callsign"
+                    placeholder="Enter your convoy callsign"
                     required
                   />
                 </div>
@@ -604,18 +682,18 @@ export const HomePage: React.FC<HomePageProps> = ({
               <div>
                 <label
                   htmlFor="join-squad-code-input"
-                  style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '5px' }}
+                  style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', letterSpacing: '0.4px' }}
                 >
-                  SQUAD CODE OR INVITE LINK
+                  SQUAD CODE OR INVITE URL
                 </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
                     id="join-squad-code-input"
                     type="text"
-                    className="input-base"
+                    className="input-base font-mono"
                     value={inputSquadId}
                     onChange={(e) => handleInputChange(e.target.value)}
-                    placeholder="e.g. SQ-92A4 or paste link"
+                    placeholder="e.g. SQ-92A4"
                     autoFocus
                     required
                   />
@@ -635,7 +713,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     style={{ padding: '0 12px', flexShrink: 0 }}
                     title="Scan QR Code"
                   >
-                    <QrCode size={16} />
+                    <QrCode size={16} color="var(--accent-cyan)" />
                   </button>
                 </div>
               </div>
@@ -643,10 +721,11 @@ export const HomePage: React.FC<HomePageProps> = ({
               {feedback && (
                 <div
                   style={{
-                    padding: '8px 12px',
+                    padding: '9px 12px',
                     borderRadius: 'var(--radius-xs)',
-                    backgroundColor: feedback.isError ? 'var(--accent-red-dim)' : 'var(--accent-cyan-dim)',
-                    color: feedback.isError ? 'var(--accent-red)' : 'var(--accent-cyan)',
+                    backgroundColor: feedback.isError ? 'var(--status-alert-dim)' : 'var(--status-connected-dim)',
+                    color: feedback.isError ? 'var(--status-alert)' : 'var(--accent-cyan)',
+                    border: `1px solid ${feedback.isError ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 210, 255, 0.3)'}`,
                     fontSize: '12px'
                   }}
                 >
@@ -656,7 +735,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
               <button
                 type="submit"
-                className="btn-success"
+                className="btn-primary"
                 style={{ width: '100%', padding: '12px', fontSize: '14px', marginTop: '6px' }}
               >
                 <span>Connect & Enter Convoy</span>

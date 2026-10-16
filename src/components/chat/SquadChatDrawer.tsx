@@ -11,12 +11,12 @@ interface SquadChatDrawerProps {
 }
 
 const QUICK_ACTIONS: { id: QuickActionType; label: string; icon: any; color: string }[] = [
-  { id: 'wait_for_me', label: 'Wait for me', icon: Clock, color: 'var(--accent-amber)' },
-  { id: 'stopping', label: 'I am stopping', icon: AlertTriangle, color: 'var(--accent-red)' },
+  { id: 'wait_for_me', label: 'Wait for me', icon: Clock, color: 'var(--status-warning)' },
+  { id: 'stopping', label: 'I am stopping', icon: AlertTriangle, color: 'var(--status-alert)' },
   { id: 'fuel_stop', label: 'Fuel stop', icon: Fuel, color: 'var(--accent-cyan)' },
-  { id: 'food_stop', label: 'Food stop', icon: Coffee, color: 'var(--accent-purple)' },
-  { id: 'reached', label: 'Reached', icon: CheckCircle, color: 'var(--accent-green)' },
-  { id: 'meet_here', label: 'Let\'s meet here', icon: Navigation, color: 'var(--accent-cyan)' }
+  { id: 'food_stop', label: 'Food stop', icon: Coffee, color: 'var(--status-arrived)' },
+  { id: 'reached', label: 'Reached', icon: CheckCircle, color: 'var(--status-live)' },
+  { id: 'meet_here', label: "Let's meet here", icon: Navigation, color: 'var(--accent-primary)' }
 ];
 
 export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
@@ -54,8 +54,9 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(8, 13, 22, 0.75)',
+        backgroundColor: 'rgba(5, 8, 17, 0.78)',
         backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         zIndex: 'var(--z-bottom-sheet)',
         display: 'flex',
         justifyContent: 'flex-end'
@@ -70,9 +71,9 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: 'var(--bg-secondary)',
-          borderLeft: '1px solid var(--border-subtle)',
-          boxShadow: 'var(--shadow-xl)'
+          backgroundColor: 'var(--bg-elevated)',
+          borderLeft: '1px solid var(--border-medium)',
+          boxShadow: 'var(--shadow-elevated)'
         }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
@@ -92,10 +93,11 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
-                width: '32px',
-                height: '32px',
+                width: '34px',
+                height: '34px',
                 borderRadius: 'var(--radius-sm)',
-                backgroundColor: 'rgba(0, 217, 232, 0.12)',
+                backgroundColor: 'rgba(0, 102, 255, 0.15)',
+                border: '1px solid rgba(0, 102, 255, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -104,23 +106,14 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
               <MessageSquare size={18} color="var(--accent-cyan)" />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', margin: 0 }}>
                   Convoy Radio
                 </h3>
-                <span
-                  style={{
-                    width: '7px',
-                    height: '7px',
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--accent-green)',
-                    display: 'inline-block'
-                  }}
-                  title="Channel active"
-                />
+                <span className="status-beacon-live" style={{ width: '6px', height: '6px' }} title="Live GPS Channel" />
               </div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Real-time channel
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                Real-Time Channel
               </span>
             </div>
           </div>
@@ -144,7 +137,7 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             gap: '8px',
             overflowX: 'auto',
             scrollbarWidth: 'none',
-            backgroundColor: 'var(--bg-card)'
+            backgroundColor: 'var(--bg-surface)'
           }}
         >
           {QUICK_ACTIONS.map((qa) => {
@@ -160,17 +153,17 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
                   gap: '6px',
                   padding: '6px 12px',
                   borderRadius: 'var(--radius-full)',
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 700,
                   whiteSpace: 'nowrap',
-                  backgroundColor: 'var(--bg-elevated)',
+                  backgroundColor: 'rgba(10, 15, 29, 0.7)',
                   color: qa.color,
-                  border: `1px solid ${qa.color}33`,
+                  border: `1px solid ${qa.color}44`,
                   cursor: 'pointer',
-                  transition: 'background-color 0.15s'
+                  transition: 'all 0.15s ease'
                 }}
               >
-                <Icon size={14} />
+                <Icon size={13} />
                 <span>{qa.label}</span>
               </button>
             );
@@ -186,7 +179,7 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             display: 'flex',
             flexDirection: 'column',
             gap: '12px',
-            backgroundColor: 'var(--bg-primary)'
+            backgroundColor: 'var(--bg-canvas)'
           }}
         >
           {messages.length === 0 ? (
@@ -223,16 +216,16 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
                       <span
                         style={{
                           fontSize: '11px',
-                          fontWeight: 700,
+                          fontWeight: 800,
                           color: msg.senderColor || 'var(--accent-cyan)',
                           letterSpacing: '0.2px'
                         }}
                       >
-                        {msg.senderName && msg.senderName.trim().length > 12
-                          ? `${msg.senderName.trim().substring(0, 10)}...`
-                          : (msg.senderName || 'Member')}
+                        {msg.senderName && msg.senderName.trim().length > 14
+                          ? `${msg.senderName.trim().substring(0, 12)}...`
+                          : (msg.senderName || 'Rider')}
                       </span>
-                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                      <span className="font-mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                       </span>
                     </div>
@@ -240,6 +233,7 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
 
                   {isMe && (
                     <div
+                      className="font-mono"
                       style={{
                         fontSize: '10px',
                         color: 'var(--text-muted)',
@@ -256,16 +250,16 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
                     style={{
                       padding: '10px 14px',
                       borderRadius: 'var(--radius-sm)',
-                      backgroundColor: isMe
-                        ? 'var(--accent-cyan)'
+                      background: isMe
+                        ? 'linear-gradient(135deg, #0066FF 0%, #0052CC 100%)'
                         : isAlert
-                        ? 'var(--bg-elevated)'
-                        : 'var(--bg-card)',
-                      color: isMe ? 'var(--text-inverse)' : 'var(--text-primary)',
+                        ? 'var(--bg-surface)'
+                        : 'var(--bg-elevated)',
+                      color: '#FFFFFF',
                       border: isAlert
-                        ? `1.5px solid ${msg.senderColor || 'var(--accent-amber)'}`
+                        ? `1.5px solid ${msg.senderColor || 'var(--status-warning)'}`
                         : isMe
-                        ? 'none'
+                        ? '1px solid rgba(255, 255, 255, 0.2)'
                         : '1px solid var(--border-subtle)',
                       fontWeight: isAlert ? 700 : 500,
                       fontSize: '14px',
@@ -290,14 +284,14 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             borderTop: '1px solid var(--border-subtle)',
             display: 'flex',
             gap: '8px',
-            backgroundColor: 'var(--bg-card)'
+            backgroundColor: 'var(--bg-surface)'
           }}
         >
           <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Type a radio message..."
+            placeholder="Broadcast a radio message..."
             className="input-base"
             style={{
               flex: 1,
@@ -311,7 +305,7 @@ export const SquadChatDrawer: React.FC<SquadChatDrawerProps> = ({
             disabled={!inputText.trim()}
             className="btn-primary"
             aria-label="Send radio message"
-            style={{ padding: '10px 14px' }}
+            style={{ padding: '10px 15px' }}
           >
             <Send size={16} />
           </button>
