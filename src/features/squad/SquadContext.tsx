@@ -49,6 +49,10 @@ interface SquadContextType {
   voteRegroup: (accept: boolean) => Promise<void>;
   setFocusedMemberId: (id: string | null) => void;
 
+  // Session Ended Notifications
+  sessionEndedNotice: string | null;
+  clearSessionEndedNotice: () => void;
+
   // Host Controls
   renameSquad: (name: string) => Promise<void>;
   changeDestination: (destination: string, coordinates: LatLng, route: Route) => Promise<void>;
@@ -71,9 +75,94 @@ export const SquadProvider: React.FC<{
   const [fallingBehindAlert, setFallingBehindAlert] = useState<string | null>(null);
   const [arrivalNotification, setArrivalNotification] = useState<string | null>(null);
   const [focusedMemberId, setFocusedMemberId] = useState<string | null>(null);
+  const [sessionEndedNotice, setSessionEndedNotice] = useState<string | null>(null);
 
   const prevArrivedMembersRef = useRef<Set<string>>(new Set());
   const lastAlertTimeRef = useRef<number>(0);
+
+  const clearSessionEndedNotice = useCallback(() => {
+    setSessionEndedNotice(null);
+  }, []);
+
+  const handleSessionEnded = useCallback((isHostAction: boolean) => {
+    try {
+      localStorage.removeItem('squadnav_active_squad_id');
+    } catch {}
+    setSquad(null);
+    setMembers([]);
+    setMessages([]);
+    setSuggestions([]);
+    setFallingBehindAlert(null);
+    setArrivalNotification(null);
+    setFocusedMemberId(null);
+    if (!isHostAction) {
+      setSessionEndedNotice('The host has ended this squad convoy session.');
+      try {
+        soundService.playAlertChime();
+      } catch {}
+    }
+  }, []);
+
+  // 1. Initial check & active session restoration on mount
+  useEffect(() => {
+    try {
+      const activeSquadId = localStorage.getItem('squadnav_active_squad_id');
+      if (activeSquadId) {
+        squadDataService.getSquad(activeSquadId).then((found) => {
+          if (found && found.status === 'active') {
+            setSquad(found);
+            squadDataService.getMembers(activeSquadId).then((m) => {
+              if (m && m.length > 0) setMembers(m);
+            });
+          } else {
+            localStorage.removeItem('squadnav_active_squad_id');
+          }
+        }).catch(() => {
+          localStorage.removeItem('squadnav_active_squad_id');
+        });
+      }
+    } catch {}
+  }, []);
+
+  // 2. Active squad heartbeat & reconnection verification
+  useEffect(() => {
+    if (!squad?.squadId) return;
+    const currentSquadId = squad.squadId;
+
+    const verifySquadStatus = async () => {
+      try {
+        const remote = await squadDataService.getSquad(currentSquadId);
+        if (!remote || remote.status === 'ended') {
+          console.log('[SquadContext] Heartbeat/reconnect: Squad has ended on server');
+          handleSessionEnded(false);
+        }
+      } catch (err) {
+        // Network temporary error, wait for next tick
+      }
+    };
+
+    const interval = setInterval(verifySquadStatus, 5000);
+
+    const onOnline = () => {
+      console.log('[SquadContext] Browser back online, verifying squad status...');
+      verifySquadStatus();
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        verifySquadStatus();
+      }
+    };
+
+    window.addEventListener('online', onOnline);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [squad?.squadId, handleSessionEnded]);
 
   // Subscribe to real-time squad data when squadId is set
   useEffect(() => {
@@ -81,13 +170,7 @@ export const SquadProvider: React.FC<{
 
     const unsubSquad = squadDataService.subscribeToSquad(squad.squadId, (updated) => {
       if (!updated || updated.status === 'ended') {
-        setSquad(null);
-        setMembers([]);
-        setMessages([]);
-        setSuggestions([]);
-        setFallingBehindAlert(null);
-        setArrivalNotification(null);
-        setFocusedMemberId(null);
+        handleSessionEnded(false);
         return;
       }
       setSquad(updated);
@@ -303,6 +386,9 @@ export const SquadProvider: React.FC<{
     };
 
     await squadDataService.updateMember(squadId, hostMember, true);
+    try {
+      localStorage.setItem('squadnav_active_squad_id', squadId);
+    } catch {}
     setMembers([hostMember]);
     setSquad(newSquad);
     return squadId;
@@ -407,6 +493,9 @@ export const SquadProvider: React.FC<{
     }
 
     setSquad(existingSquad);
+    try {
+      localStorage.setItem('squadnav_active_squad_id', squadId);
+    } catch {}
 
     // Send arrival/join announcement in chat
     await squadDataService.sendMessage(squadId, {
@@ -427,11 +516,11 @@ export const SquadProvider: React.FC<{
   // LEAVE SQUAD
   const leaveSquad = async () => {
     if (!user || !squad) return;
+    try {
+      localStorage.removeItem('squadnav_active_squad_id');
+    } catch {}
     await squadDataService.removeMember(squad.squadId, user.id);
-    setSquad(null);
-    setMembers([]);
-    setMessages([]);
-    setSuggestions([]);
+    handleSessionEnded(true);
   };
 
   // UPDATE LOCATION
@@ -591,20 +680,13 @@ export const SquadProvider: React.FC<{
   const endSquad = async () => {
     if (!isHost || !squad) return;
     const squadId = squad.squadId;
-    const updated: Squad = { ...squad, status: 'ended' };
     try {
-      await squadDataService.saveSquad(updated);
       await sendChat('The host has ended the squad session.');
+      await squadDataService.endSquadSession(squadId, user?.id);
     } catch (e) {
-      console.warn('Error saving ended squad:', e);
+      console.warn('Error ending squad session:', e);
     }
-    setSquad(null);
-    setMembers([]);
-    setMessages([]);
-    setSuggestions([]);
-    setFallingBehindAlert(null);
-    setArrivalNotification(null);
-    setFocusedMemberId(null);
+    handleSessionEnded(true);
   };
 
   const updateSettings = async (settings: Partial<SquadSettings>) => {
@@ -630,6 +712,8 @@ export const SquadProvider: React.FC<{
         fallingBehindAlert,
         arrivalNotification,
         focusedMemberId,
+        sessionEndedNotice,
+        clearSessionEndedNotice,
         createSquad,
         joinSquad,
         leaveSquad,

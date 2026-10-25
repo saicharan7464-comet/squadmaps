@@ -36,7 +36,8 @@ import {
   MapPin,
   Car,
   Bike,
-  Footprints
+  Footprints,
+  Menu
 } from 'lucide-react';
 
 import { GlobalHeader } from './components/common/GlobalHeader';
@@ -50,11 +51,13 @@ const NavigationCockpit: React.FC<{
   openCreateSquadOnMount?: boolean;
   autoStartNavigationOnMount?: boolean;
   onOpenAccount?: () => void;
+  openSquadPanelTrigger?: number;
 }> = ({
   onGoHome,
   openCreateSquadOnMount = false,
   autoStartNavigationOnMount = false,
-  onOpenAccount
+  onOpenAccount,
+  openSquadPanelTrigger = 0
 }) => {
   const { user, updateProfileName } = useAuth();
   const {
@@ -69,6 +72,8 @@ const NavigationCockpit: React.FC<{
     fallingBehindAlert,
     arrivalNotification,
     focusedMemberId,
+    sessionEndedNotice,
+    clearSessionEndedNotice,
     createSquad,
     updateMyLocation,
     sendChat,
@@ -86,6 +91,14 @@ const NavigationCockpit: React.FC<{
   // Location Tracker
   const location = useLocationTracker();
 
+  // Responsive state
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Navigation State
   const [activeRoute, setActiveRoute] = useState<Route | null>(squad?.canonicalRoute || null);
   const [isNavigating, setIsNavigating] = useState(
@@ -95,11 +108,16 @@ const NavigationCockpit: React.FC<{
 
   // UI Drawers & Modals
   const [isCreateSquadOpen, setIsCreateSquadOpen] = useState(openCreateSquadOnMount);
-  const [isSquadPanelOpen, setIsSquadPanelOpen] = useState(true);
+  const [isSquadPanelOpen, setIsSquadPanelOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isRegroupOpen, setIsRegroupOpen] = useState(false);
   const [isHostSettingsOpen, setIsHostSettingsOpen] = useState(false);
-  const [isMobileSheetExpanded, setIsMobileSheetExpanded] = useState(false);
+
+  useEffect(() => {
+    if (openSquadPanelTrigger > 0) {
+      setIsSquadPanelOpen(true);
+    }
+  }, [openSquadPanelTrigger]);
 
   // Google Maps-Style Meeting Point Selection ("Let's Meet Here")
   const [isSelectingMeetingPoint, setIsSelectingMeetingPoint] = useState(false);
@@ -127,7 +145,6 @@ const NavigationCockpit: React.FC<{
   // Sync active route with squad canonical route or recalculate from member position to destination
   useEffect(() => {
     if (squad?.canonicalRoute) {
-      setIsSquadPanelOpen(true);
       if (autoStartNavigationOnMount && (isHost || squad?.settings?.navigationStarted)) {
         setIsNavigating(true);
       }
@@ -148,10 +165,11 @@ const NavigationCockpit: React.FC<{
         setActiveRoute(squad.canonicalRoute);
       }
     } else {
-      // Squad ended or left: clean up navigation and modals
+      // Squad ended or left: clean up navigation, HUD, and panels
       setActiveRoute(null);
       setIsNavigating(false);
       setSelectedDestination(null);
+      setIsSquadPanelOpen(false);
       setIsHostSettingsOpen(false);
       setIsChatOpen(false);
       setIsRegroupOpen(false);
@@ -168,12 +186,11 @@ const NavigationCockpit: React.FC<{
       if (squad.settings?.navigationStarted) {
         if (!isNavigating) {
           setIsNavigating(true);
-          setIsMobileSheetExpanded(false);
+          setIsSquadPanelOpen(false);
         }
       } else {
         if (isNavigating) {
           setIsNavigating(false);
-          setIsSquadPanelOpen(true);
         }
       }
     }
@@ -328,7 +345,7 @@ const NavigationCockpit: React.FC<{
   const handleStartNavigation = () => {
     if (!activeRoute) return;
     setIsNavigating(true);
-    setIsMobileSheetExpanded(false);
+    setIsSquadPanelOpen(false);
     if (squad && isHost) {
       updateSettings({ navigationStarted: true });
     }
@@ -337,8 +354,6 @@ const NavigationCockpit: React.FC<{
   // Exit Navigation
   const handleExitNavigation = () => {
     setIsNavigating(false);
-    setIsSquadPanelOpen(true);
-    setIsMobileSheetExpanded(false);
     if (squad && isHost) {
       updateSettings({ navigationStarted: false });
     }
@@ -351,7 +366,6 @@ const NavigationCockpit: React.FC<{
     setSelectedMeetingName('');
     setPreviewMeetingRoute(null);
     setIsSquadPanelOpen(false);
-    setIsMobileSheetExpanded(false);
   };
 
   const handleCancelMeetingPoint = () => {
@@ -515,15 +529,129 @@ const NavigationCockpit: React.FC<{
           onToggleVoice={turnByTurn.toggleVoiceMute}
           onExitNavigation={handleExitNavigation}
           squadMemberCount={squad ? members.length : undefined}
-          isSquadOpen={isSquadPanelOpen || isMobileSheetExpanded}
+          isSquadOpen={isSquadPanelOpen}
           onToggleSquad={() => {
             setIsSquadPanelOpen((prev) => !prev);
-            setIsMobileSheetExpanded((prev) => !prev);
           }}
           onToggleChat={squad ? () => setIsChatOpen((prev) => !prev) : undefined}
           isChatOpen={isChatOpen}
           hasUnreadMessages={messages.length > 0}
         />
+      )}
+
+      {/* Session Ended Alert Banner */}
+      {sessionEndedNotice && (
+        <div
+          className="cockpit-card animate-slide-down"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            left: '16px',
+            right: '16px',
+            maxWidth: '480px',
+            margin: '0 auto',
+            zIndex: 99,
+            padding: '12px 16px',
+            backgroundColor: 'rgba(239, 68, 68, 0.95)',
+            border: '1.5px solid var(--accent-red)',
+            color: '#FFFFFF',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            boxShadow: 'var(--shadow-xl)',
+            borderRadius: 'var(--radius-md)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <AlertTriangle size={20} color="#FFFFFF" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '13px', fontWeight: 700 }}>{sessionEndedNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={clearSessionEndedNotice}
+            style={{
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              borderRadius: 'var(--radius-sm)',
+              color: '#FFFFFF',
+              padding: '4px 8px',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Three-horizontal-lines (Hamburger) Button to open Squad Convoy */}
+      {!isSelectingMeetingPoint && (
+        <button
+          type="button"
+          onClick={() => {
+            if (squad) {
+              setIsSquadPanelOpen((prev) => !prev);
+            } else {
+              setIsCreateSquadOpen(true);
+            }
+          }}
+          className="cockpit-card"
+          style={{
+            position: 'absolute',
+            left: '12px',
+            top: isNavigating ? '112px' : '118px',
+            zIndex: 40,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            height: '32px',
+            padding: '0 10px',
+            borderRadius: '999px',
+            backgroundColor: isSquadPanelOpen && squad ? 'rgba(0, 240, 255, 0.16)' : 'rgba(10, 15, 29, 0.94)',
+            border: isSquadPanelOpen && squad ? '1.5px solid var(--accent-cyan)' : '1px solid rgba(0, 240, 255, 0.25)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.55)',
+            cursor: 'pointer',
+            color: '#FFFFFF',
+            transition: 'all 0.18s ease',
+            whiteSpace: 'nowrap'
+          }}
+          title={squad ? (isSquadPanelOpen ? 'Close Squad Convoy' : 'Open Squad Convoy') : 'Create Squad'}
+          aria-label="Toggle Squad Convoy menu"
+        >
+          <Menu size={15} color="var(--accent-cyan)" style={{ flexShrink: 0 }} />
+          {squad ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.04em', lineHeight: 1 }}>
+                CONVOY
+              </span>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '17px',
+                  height: '17px',
+                  padding: '0 4px',
+                  borderRadius: '999px',
+                  backgroundColor: 'rgba(0, 240, 255, 0.22)',
+                  border: '1px solid var(--accent-cyan)',
+                  color: 'var(--accent-cyan)',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  lineHeight: 1
+                }}
+              >
+                {members.length}
+              </span>
+            </div>
+          ) : (
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', lineHeight: 1 }}>
+              Squad
+            </span>
+          )}
+        </button>
       )}
 
       {/* Top Search Bar & Header (When NOT Navigating and NOT selecting meeting point) */}
@@ -549,9 +677,9 @@ const NavigationCockpit: React.FC<{
               className="btn-icon"
               onClick={onGoHome}
               title="Go to Home"
-              style={{ flexShrink: 0, width: '46px', height: '46px' }}
+              style={{ flexShrink: 0, width: isMobile ? '40px' : '44px', height: isMobile ? '40px' : '44px' }}
             >
-              <Home size={20} color="var(--accent-cyan)" />
+              <Home size={isMobile ? 18 : 20} color="var(--accent-cyan)" />
             </button>
 
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -573,12 +701,12 @@ const NavigationCockpit: React.FC<{
                 title="Squad Chat Radio"
                 style={{
                   flexShrink: 0,
-                  width: '46px',
-                  height: '46px',
+                  width: isMobile ? '40px' : '44px',
+                  height: isMobile ? '40px' : '44px',
                   position: 'relative'
                 }}
               >
-                <MessageSquare size={20} color="var(--accent-cyan)" />
+                <MessageSquare size={isMobile ? 18 : 20} color="var(--accent-cyan)" />
                 {messages.length > 0 && (
                   <span
                     style={{
@@ -603,8 +731,8 @@ const NavigationCockpit: React.FC<{
                 title={`Account (${user?.name || 'Pilot'})`}
                 style={{
                   flexShrink: 0,
-                  width: '46px',
-                  height: '46px',
+                  width: isMobile ? '40px' : '44px',
+                  height: isMobile ? '40px' : '44px',
                   padding: '3px'
                 }}
               >
@@ -792,7 +920,7 @@ const NavigationCockpit: React.FC<{
       <div
         style={{
           position: 'absolute',
-          top: isNavigating ? '120px' : '110px',
+          top: isNavigating ? '154px' : '158px',
           left: '16px',
           right: '16px',
           zIndex: 'var(--z-hud)',
@@ -800,7 +928,8 @@ const NavigationCockpit: React.FC<{
           margin: '0 auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '10px'
+          gap: '10px',
+          pointerEvents: 'none'
         }}
       >
         {/* Falling Behind Alert */}
@@ -857,88 +986,52 @@ const NavigationCockpit: React.FC<{
         ))}
       </div>
 
-      {/* DESKTOP SIDE PANEL: Squad & Inter-Member Distances (Desktop Only) */}
-      {squad && (
-        <div
-          className="cockpit-card animate-modal-in"
-          style={{
-            position: 'absolute',
-            top: '80px',
-            bottom: '24px',
-            left: '20px',
-            width: '380px',
-            zIndex: 'var(--z-controls)',
-            backgroundColor: 'rgba(10, 15, 29, 0.94)',
-            border: '1px solid var(--border-medium)',
-            boxShadow: 'var(--shadow-xl)',
-            display: window.innerWidth > 768 && isSquadPanelOpen ? 'flex' : 'none',
-            flexDirection: 'column',
-            overflow: 'hidden'
-          }}
-        >
-          <SquadPanel
-            squad={squad}
-            members={enrichedMembers}
-            squadProgress={squadProgress}
-            currentUserId={user?.id || ''}
-            isHost={isHost}
-            isSharingPaused={location.isSharingPaused}
-            onToggleSharing={location.togglePauseSharing}
-            onLocateMember={handleLocateMember}
-            onProposeRegroup={handleStartSelectingMeetingPoint}
-            onOpenSettings={() => setIsHostSettingsOpen(true)}
-            onOpenChat={() => setIsChatOpen(true)}
-            hasUnreadMessages={messages.length > 0}
-          />
-        </div>
-      )}
+      {/* SQUAD CONVOY COLLAPSIBLE POPUP WINDOW (MOBILE BOTTOM SHEET & DESKTOP FLOATING DRAWER) */}
+      {squad && isSquadPanelOpen && (
+        <>
+          {/* Mobile Backdrop */}
+          {isMobile && (
+            <div
+              className="animate-fade-in"
+              onClick={() => setIsSquadPanelOpen(false)}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.55)',
+                backdropFilter: 'blur(3px)',
+                WebkitBackdropFilter: 'blur(3px)',
+                zIndex: 92
+              }}
+            />
+          )}
 
-      {/* MOBILE BOTTOM SHEET: Squad Members & Distances (Mobile Only) */}
-      {squad && window.innerWidth <= 768 && (!isNavigating || isMobileSheetExpanded) && (
-        <div
-          className="cockpit-card"
-          style={{
-            position: 'absolute',
-            left: '12px',
-            right: '12px',
-            bottom: isNavigating ? '96px' : '16px',
-            zIndex: 'var(--z-bottom-sheet)',
-            maxHeight: isMobileSheetExpanded ? '75vh' : '150px',
-            transition: 'max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            backgroundColor: 'rgba(10, 15, 29, 0.96)',
-            border: '1px solid var(--border-medium)',
-            boxShadow: 'var(--shadow-xl)'
-          }}
-        >
-          {/* Drag / Expand Bar */}
+          {/* Collapsible Popup / Drawer Panel */}
           <div
-            onClick={() => setIsMobileSheetExpanded((prev) => !prev)}
+            className={`cockpit-card ${isMobile ? 'animate-slide-up' : 'animate-modal-in'}`}
             style={{
-              padding: '10px 16px',
-              borderBottom: '1px solid var(--border-subtle)',
+              position: isMobile ? 'fixed' : 'absolute',
+              top: isMobile ? 'auto' : (isNavigating ? '120px' : '76px'),
+              bottom: isMobile ? 'calc(68px + env(safe-area-inset-bottom, 0px))' : '24px',
+              left: isMobile ? '8px' : '16px',
+              right: isMobile ? '8px' : 'auto',
+              width: isMobile ? 'auto' : '380px',
+              maxWidth: isMobile ? 'none' : 'calc(100vw - 32px)',
+              maxHeight: isMobile ? 'calc(85vh - 70px)' : 'none',
+              zIndex: isMobile ? 93 : 50,
+              backgroundColor: 'rgba(10, 15, 29, 0.98)',
+              border: '1px solid var(--border-medium)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: isMobile
+                ? '0 -8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 240, 255, 0.1)'
+                : 'var(--shadow-xl)',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer'
+              flexDirection: 'column',
+              overflow: 'hidden'
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={18} color="var(--accent-cyan)" />
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.01em' }}>
-                Squad Convoy ({members.length})
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>•</span>
-              <span className="font-mono text-green" style={{ fontSize: '12px', fontWeight: 700 }}>
-                {squadProgress.enRouteCount} on track
-              </span>
-            </div>
-            {isMobileSheetExpanded ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-          </div>
-
-          <div style={{ flex: 1, overflowY: 'auto' }}>
             <SquadPanel
               squad={squad}
               members={enrichedMembers}
@@ -952,9 +1045,12 @@ const NavigationCockpit: React.FC<{
               onOpenSettings={() => setIsHostSettingsOpen(true)}
               onOpenChat={() => setIsChatOpen(true)}
               hasUnreadMessages={messages.length > 0}
+              onClose={() => setIsSquadPanelOpen(false)}
+              onStartNavigation={handleStartNavigation}
+              canStartNavigation={Boolean(!isNavigating && activeRoute)}
             />
           </div>
-        </div>
+        </>
       )}
 
       {/* "LET'S MEET HERE" (GOOGLE MAPS STYLE SELECTION OVERLAYS) */}
@@ -1119,55 +1215,85 @@ const NavigationCockpit: React.FC<{
         </>
       )}
 
-      {/* BOTTOM RIGHT FLOATING BUTTONS: Simulator Mode & Start Nav */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '24px',
-          right: '16px',
-          zIndex: 'var(--z-controls)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '10px',
-          alignItems: 'flex-end'
-        }}
-      >
-        {/* Convoy Simulator Toggle */}
-        <button
-          onClick={toggleConvoySimulator}
-          className="btn-secondary"
-          title="Toggle Convoy Simulation (For Desktop Testing)"
+      {/* Centered Compact Start Navigation Button */}
+      {!isNavigating && activeRoute && (
+        <div
           style={{
-            fontSize: '12px',
-            padding: '8px 14px',
-            borderRadius: 'var(--radius-full)',
-            backgroundColor: isConvoyDemoActive ? 'rgba(0, 240, 255, 0.2)' : 'var(--bg-glass)',
-            borderColor: isConvoyDemoActive ? 'var(--accent-cyan)' : 'var(--border-subtle)',
-            color: isConvoyDemoActive ? 'var(--accent-cyan)' : 'var(--text-primary)'
+            position: isMobile ? 'fixed' : 'absolute',
+            bottom: isMobile
+              ? 'calc(68px + env(safe-area-inset-bottom, 0px))'
+              : '24px',
+            left: isMobile ? '16px' : 'auto',
+            right: isMobile ? '16px' : '24px',
+            maxWidth: isMobile ? '400px' : 'none',
+            margin: isMobile ? '0 auto' : '0',
+            zIndex: 85,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none'
           }}
         >
-          {isConvoyDemoActive ? <Pause size={14} /> : <Play size={14} />}
-          <span>{isConvoyDemoActive ? 'Stop Simulator' : 'Demo Convoy'}</span>
-        </button>
-
-        {/* Start Nav Button (If route exists & not navigating) */}
-        {!isNavigating && activeRoute && (
           <button
             onClick={handleStartNavigation}
             className="btn-primary"
             style={{
-              padding: '14px 24px',
-              fontSize: '15px',
-              borderRadius: 'var(--radius-full)',
+              pointerEvents: 'auto',
+              width: isMobile ? '100%' : 'auto',
+              height: '44px',
+              padding: isMobile ? '0 20px' : '0 24px',
+              fontSize: '13.5px',
+              borderRadius: '999px',
               fontWeight: 800,
-              boxShadow: 'var(--shadow-glow-blue)'
+              boxShadow: '0 0 16px rgba(0, 240, 255, 0.35), 0 3px 12px rgba(0, 0, 0, 0.45)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              letterSpacing: '0.03em',
+              background: 'linear-gradient(135deg, #00F0FF 0%, #0066FF 100%)',
+              color: '#0A0E17',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'transform 0.15s ease, box-shadow 0.15s ease'
             }}
           >
-            <Navigation size={18} />
-            <span>Start Navigation</span>
+            <Navigation size={16} color="#0A0E17" strokeWidth={2.5} />
+            <span>START NAVIGATION</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Convoy Simulator Toggle (Desktop testing only) */}
+      {!isMobile && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: activeRoute && !isNavigating ? '78px' : '24px',
+            right: '24px',
+            zIndex: 85,
+            pointerEvents: 'auto'
+          }}
+        >
+          <button
+            onClick={toggleConvoySimulator}
+            className="btn-secondary"
+            title="Toggle Convoy Simulation (For Desktop Testing)"
+            style={{
+              fontSize: '12px',
+              padding: '7px 14px',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: isConvoyDemoActive ? 'rgba(0, 240, 255, 0.2)' : 'rgba(10, 15, 29, 0.92)',
+              borderColor: isConvoyDemoActive ? 'var(--accent-cyan)' : 'var(--border-subtle)',
+              color: isConvoyDemoActive ? 'var(--accent-cyan)' : 'var(--text-primary)',
+              boxShadow: 'var(--shadow-md)'
+            }}
+          >
+            {isConvoyDemoActive ? <Pause size={13} /> : <Play size={13} />}
+            <span>{isConvoyDemoActive ? 'Stop Demo' : 'Demo Convoy'}</span>
+          </button>
+        </div>
+      )}
 
       {/* CREATE SQUAD WIZARD MODAL (FLOW A: HOME PAGE FULL 5-STEP WIZARD) */}
       <CreateSquadWizard
@@ -1347,6 +1473,9 @@ const AppContent: React.FC = () => {
   const [openCreateOnCockpit, setOpenCreateOnCockpit] = useState(false);
   const [autoStartNavOnCockpit, setAutoStartNavOnCockpit] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [openSquadPanelTrigger, setOpenSquadPanelTrigger] = useState(0);
+
+  const { squad } = useSquad();
 
   // Check URL on load for invite links (?join=SQ-1234, /join/SQ-1234, #join=SQ-1234)
   useEffect(() => {
@@ -1430,6 +1559,7 @@ const AppContent: React.FC = () => {
             openCreateSquadOnMount={openCreateOnCockpit}
             autoStartNavigationOnMount={autoStartNavOnCockpit}
             onOpenAccount={() => setIsAccountModalOpen(true)}
+            openSquadPanelTrigger={openSquadPanelTrigger}
           />
         )}
       </main>
@@ -1443,7 +1573,12 @@ const AppContent: React.FC = () => {
         }}
         onOpenAccount={() => setIsAccountModalOpen(true)}
         onOpenSquadAction={() => {
-          handleCreateSquad();
+          if (squad) {
+            handleOpenMap();
+            setOpenSquadPanelTrigger((prev) => prev + 1);
+          } else {
+            handleCreateSquad();
+          }
         }}
       />
 

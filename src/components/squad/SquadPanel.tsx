@@ -13,7 +13,9 @@ import {
   EyeOff,
   Settings,
   MessageSquare,
-  Radio
+  Radio,
+  X,
+  Navigation
 } from 'lucide-react';
 
 interface SquadPanelProps {
@@ -28,6 +30,9 @@ interface SquadPanelProps {
   onProposeRegroup: () => void;
   onOpenSettings?: () => void;
   onOpenChat?: () => void;
+  onClose?: () => void;
+  onStartNavigation?: () => void;
+  canStartNavigation?: boolean;
   hasUnreadMessages?: boolean;
 }
 
@@ -43,6 +48,9 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
   onProposeRegroup,
   onOpenSettings,
   onOpenChat,
+  onClose,
+  onStartNavigation,
+  canStartNavigation = false,
   hasUnreadMessages = false
 }) => {
   const [copied, setCopied] = useState(false);
@@ -146,8 +154,47 @@ export const SquadPanel: React.FC<SquadPanelProps> = ({
                 <Settings size={17} />
               </button>
             )}
+
+            {onClose && (
+              <button
+                type="button"
+                className="btn-icon"
+                onClick={onClose}
+                title="Return to Map"
+                aria-label="Close Squad Convoy"
+                style={{ width: '36px', height: '36px' }}
+              >
+                <X size={18} color="var(--text-muted)" />
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Start Navigation Action (When Route is available and not yet navigating) */}
+        {canStartNavigation && onStartNavigation && (
+          <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--border-subtle)' }}>
+            <button
+              type="button"
+              onClick={onStartNavigation}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                padding: '12px 18px',
+                fontSize: '14px',
+                fontWeight: 800,
+                borderRadius: 'var(--radius-full)',
+                boxShadow: 'var(--shadow-glow-blue)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <Navigation size={17} />
+              <span>Start Navigation</span>
+            </button>
+          </div>
+        )}
 
         {/* Progress Summary Chips */}
         <div

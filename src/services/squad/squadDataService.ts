@@ -263,6 +263,77 @@ export class SquadDataService {
   }
 
   // ==========================================================
+  // END SQUAD SESSION (AUTHORITATIVE BACKEND & BROADCAST)
+  // ==========================================================
+
+  async endSquadSession(squadId: string, hostId?: string): Promise<void> {
+    console.log(`[squadDataService] Authoritatively ending squad session: ${squadId}`);
+
+    // 1. Clear any throttled GPS timers for this squad
+    for (const [key, timer] of this.memberUpdateTimers.entries()) {
+      if (key.startsWith(`${squadId}_`)) {
+        clearTimeout(timer);
+        this.memberUpdateTimers.delete(key);
+        this.lastMemberSupabaseUpdate.delete(key);
+      }
+    }
+
+    // 2. Authoritative backend update in Supabase
+    if (isSupabaseConfigured() && supabase) {
+      try {
+        // Mark squad status as ended
+        let updateQuery = supabase
+          .from('squads')
+          .update({
+            status: 'ended',
+            updated_at: new Date().toISOString()
+          })
+          .eq('squad_id', squadId);
+
+        if (hostId) {
+          updateQuery = updateQuery.eq('host_id', hostId);
+        }
+
+        const { error: squadErr } = await withTimeout(updateQuery, 5000);
+        if (squadErr) {
+          console.error('[squadDataService] Supabase endSquadSession squad update error:', squadErr);
+        }
+
+        // Delete members from active convoy session
+        const delMembersQuery = supabase
+          .from('squad_members')
+          .delete()
+          .eq('squad_id', squadId);
+
+        const { error: memErr } = await withTimeout(delMembersQuery, 5000);
+        if (memErr) {
+          console.warn('[squadDataService] Supabase delete squad_members error on session end:', memErr);
+        }
+
+        // Send instant Realtime broadcast to all connected clients in the squad room
+        const roomChannel = supabase.channel(`squad_room_${squadId}`);
+        await roomChannel.send({
+          type: 'broadcast',
+          event: 'squad_ended',
+          payload: { squadId, endedAt: Date.now() }
+        });
+
+        const membersChannel = supabase.channel(`squad_room_members_${squadId}`);
+        await membersChannel.send({
+          type: 'broadcast',
+          event: 'squad_ended',
+          payload: { squadId, endedAt: Date.now() }
+        });
+      } catch (err) {
+        console.warn('[squadDataService] Supabase endSquadSession error/timeout:', err);
+      }
+    }
+
+    // 3. Update local sync and broadcast across tabs
+    localSyncService.endSquad(squadId);
+  }
+
+  // ==========================================================
   // SUBSCRIBE TO SQUAD
   // ==========================================================
 
@@ -272,9 +343,15 @@ export class SquadDataService {
   ): () => void {
     // Local subscription
     const unsubLocal = localSyncService.subscribeToSquad(squadId, (localSquad) => {
-      // If Supabase is configured, do not emit null from local storage to avoid wiping active remote state
-      if (!isSupabaseConfigured() || localSquad) {
+      if (!isSupabaseConfigured()) {
         callback(localSquad);
+      } else {
+        // If local squad is explicitly ended or null, emit null to clear client state
+        if (!localSquad || localSquad.status === 'ended') {
+          callback(null);
+        } else {
+          callback(localSquad);
+        }
       }
     });
     let channel: any = null;
@@ -285,15 +362,33 @@ export class SquadDataService {
         this.getSquad(squadId)
           .then((remote) => {
             if (remote) {
-              localSyncService.saveSquad(remote);
-              callback(remote);
+              if (remote.status === 'ended') {
+                localSyncService.endSquad(squadId);
+                callback(null);
+              } else {
+                localSyncService.saveSquad(remote);
+                callback(remote);
+              }
+            } else {
+              callback(null);
             }
           })
           .catch(() => {});
 
-        const channelName = `squad_sub_${squadId}_${Math.random().toString(36).substring(2, 7)}`;
+        const channelName = `squad_room_${squadId}`;
         channel = supabase
-          .channel(channelName)
+          .channel(channelName, { config: { broadcast: { self: false } } })
+          .on(
+            'broadcast',
+            { event: 'squad_ended' },
+            (payload) => {
+              if (payload.payload?.squadId === squadId) {
+                console.log(`[squadDataService] Realtime broadcast: squad_ended received for ${squadId}`);
+                localSyncService.endSquad(squadId);
+                callback(null);
+              }
+            }
+          )
           .on(
             'postgres_changes',
             {
@@ -303,7 +398,9 @@ export class SquadDataService {
               filter: `squad_id=eq.${squadId}`
             },
             (payload) => {
-              if (payload.eventType === 'DELETE') {
+              if (payload.eventType === 'DELETE' || payload.new?.status === 'ended') {
+                console.log(`[squadDataService] Postgres changes: squad ended/deleted for ${squadId}`);
+                localSyncService.endSquad(squadId);
                 callback(null);
               } else if (payload.new) {
                 const updated = mapSquadRow(payload.new);
@@ -314,7 +411,7 @@ export class SquadDataService {
           )
           .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
-              console.log(`Subscribed to Supabase squads changes for ${squadId}`);
+              console.log(`Subscribed to Supabase squads room for ${squadId}`);
             }
           });
       } catch (err) {
@@ -365,6 +462,12 @@ export class SquadDataService {
     member: SquadMember,
     forceImmediate = false
   ): Promise<void> {
+    // Guard: Never write updates for an ended squad
+    const localSquad = localSyncService.getSquad(squadId);
+    if (localSquad && localSquad.status === 'ended') {
+      return;
+    }
+
     // 1. ALWAYS update local state immediately
     localSyncService.updateMember(squadId, member);
 
@@ -408,6 +511,12 @@ export class SquadDataService {
     mustVerify = false
   ): Promise<void> {
     if (!supabase) return;
+
+    // Guard: Do not write updates to Supabase if session has ended
+    const localSquad = localSyncService.getSquad(squadId);
+    if (localSquad && localSquad.status === 'ended') {
+      return;
+    }
 
     this.lastMemberSupabaseUpdate.set(key, Date.now());
 
@@ -500,6 +609,10 @@ export class SquadDataService {
         if (changed) {
           callback(Array.from(membersCache.values()));
         }
+      } else if (localMembers && localMembers.length === 0) {
+        // Active members were explicitly cleared
+        membersCache.clear();
+        callback([]);
       }
     });
 
@@ -512,13 +625,28 @@ export class SquadDataService {
               initialList.forEach((m) => membersCache.set(m.userId, m));
               localSyncService.saveMembers(squadId, Array.from(membersCache.values()));
               callback(Array.from(membersCache.values()));
+            } else {
+              membersCache.clear();
+              callback([]);
             }
           })
           .catch(() => {});
 
-        const channelName = `members_sub_${squadId}_${Math.random().toString(36).substring(2, 7)}`;
+        const channelName = `squad_room_members_${squadId}`;
         channel = supabase
-          .channel(channelName)
+          .channel(channelName, { config: { broadcast: { self: false } } })
+          .on(
+            'broadcast',
+            { event: 'squad_ended' },
+            (payload) => {
+              if (payload.payload?.squadId === squadId) {
+                console.log(`[squadDataService] Realtime broadcast: squad_ended on members channel for ${squadId}`);
+                membersCache.clear();
+                localSyncService.saveMembers(squadId, []);
+                callback([]);
+              }
+            }
+          )
           .on(
             'postgres_changes',
             {
@@ -532,6 +660,8 @@ export class SquadDataService {
                 const deletedUserId = payload.old?.user_id;
                 if (deletedUserId) {
                   membersCache.delete(deletedUserId);
+                } else {
+                  membersCache.clear();
                 }
               } else if (payload.new) {
                 const member = mapMemberRow(payload.new);
@@ -544,7 +674,7 @@ export class SquadDataService {
           )
           .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
-              console.log(`Subscribed to Supabase squad_members changes for ${squadId}`);
+              console.log(`Subscribed to Supabase squad_members room for ${squadId}`);
             }
           });
       } catch (err) {

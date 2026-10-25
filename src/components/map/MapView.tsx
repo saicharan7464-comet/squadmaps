@@ -560,7 +560,7 @@ export const MapView: React.FC<MapViewProps> = ({
         style={{
           position: 'absolute',
           right: '16px',
-          bottom: isNavigating ? '130px' : '100px',
+          bottom: isNavigating ? '130px' : (route ? '124px' : '78px'),
           display: 'flex',
           flexDirection: 'column',
           gap: '8px',

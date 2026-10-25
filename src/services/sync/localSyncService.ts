@@ -48,6 +48,10 @@ class LocalSyncService {
       case 'SQUAD_UPDATED':
         this.notifySquadListeners(squadId, payload);
         break;
+      case 'SQUAD_ENDED':
+        this.notifySquadListeners(squadId, null);
+        this.notifyMembersListeners(squadId, []);
+        break;
       case 'MEMBERS_UPDATED':
         this.notifyMembersListeners(squadId, payload);
         break;
@@ -75,6 +79,23 @@ class LocalSyncService {
     localStorage.setItem(this.getStorageKey('squad', squad.squadId), JSON.stringify(squad));
     this.notifySquadListeners(squad.squadId, squad);
     this.broadcast('SQUAD_UPDATED', squad.squadId, squad);
+  }
+
+  endSquad(squadId: string) {
+    const squad = this.getSquad(squadId);
+    if (squad) {
+      squad.status = 'ended';
+      localStorage.setItem(this.getStorageKey('squad', squadId), JSON.stringify(squad));
+    }
+    try {
+      localStorage.removeItem(this.getStorageKey('members', squadId));
+      localStorage.removeItem(this.getStorageKey('messages', squadId));
+      localStorage.removeItem(this.getStorageKey('suggestions', squadId));
+      localStorage.removeItem('squadnav_active_squad_id');
+    } catch {}
+    this.notifySquadListeners(squadId, null);
+    this.notifyMembersListeners(squadId, []);
+    this.broadcast('SQUAD_ENDED', squadId, { squadId, endedAt: Date.now() });
   }
 
   getSquad(squadId: string): Squad | null {
